@@ -176,6 +176,11 @@
   </div>
 
   <div class="card" id="formCard">
+    <div style="display:flex; align-items:flex-start; gap:10px; background:#fff3cd; border:1px solid #ffe69c; border-radius:12px; padding:12px 14px; margin-bottom:16px;">
+      <input type="checkbox" id="parentConsent" style="margin-top:3px; width:18px; height:18px; flex-shrink:0;">
+      <label for="parentConsent" id="lblConsent" style="font-family:'Nunito'; font-size:13px; color:#5b4b1e; line-height:1.4; cursor:pointer;"></label>
+    </div>
+
     <label id="lblName" for="childName"></label>
     <input type="text" id="childName" maxlength="24">
 
@@ -276,6 +281,9 @@
   </div>
 </div>
 <div id="printArea"></div>
+<div style="text-align:center; padding:18px 20px 30px; font-family:'Nunito',sans-serif; font-size:12px; color:#a89fc4;">
+  <a href="/privacy.html" style="color:#a89fc4;">Privacy Policy</a> &nbsp;·&nbsp; <a href="/terms.html" style="color:#a89fc4;">Terms of Use</a>
+</div>
 
 <script>
 /* ================= THEME / WORLD DATA (language-independent keys) ================= */
@@ -341,6 +349,7 @@ const I18N = {
     ctaText:"Loved the story? Get it as a printable or audiobook edition and keep it forever.", ctaBtn:"Buy this story — $6.99",
     ctaAlert:"This is a demo — in the live app this would open App Store / Google Play checkout.",
     restartLink:"Create a new story", errorNoName:"Enter your child's name to create the story.",
+    consentLabel:"I am this child's parent or legal guardian, and I consent to creating a personalized story for them.", errorNoConsent:"Please confirm you are the child's parent or guardian before continuing.",
     errorGeneric:"Couldn't create the story. Please try again in a moment. (", libraryLabel:"Your stories so far",
     noPhotoAlt:"no photo yet — a generic storybook hero will be used",
     plansTitle:"Plans", planName_free:"Free", planName_weekly:"Weekly", planName_monthly:"Monthly", planName_compile:"Storybook",
@@ -374,6 +383,7 @@ const I18N = {
     ctaText:"Tetszett a mese? Kérd el nyomtatható vagy hangoskönyv verzióban, és mentsd el örökre.", ctaBtn:"Mese megvásárlása — $6.99",
     ctaAlert:"Ez egy demó — az éles appban itt indulna az App Store / Google Play fizetés.",
     restartLink:"Új mese készítése", errorNoName:"Add meg a gyermek nevét a mese elkészítéséhez.",
+    consentLabel:"Én vagyok ennek a gyermeknek a szülője vagy törvényes gondviselője, és hozzájárulok, hogy személyre szabott mesét készítsünk neki.", errorNoConsent:"Kérjük, erősítsd meg, hogy a gyermek szülője vagy gondviselője vagy, mielőtt folytatod.",
     errorGeneric:"Nem sikerült elkészíteni a mesét. Próbáld újra egy pillanat múlva. (", libraryLabel:"Eddigi meséid",
     noPhotoAlt:"nincs fotó — egy általános mesehős fog megjelenni",
     plansTitle:"Csomagok", planName_free:"Ingyenes", planName_weekly:"Heti", planName_monthly:"Havi", planName_compile:"Meséskönyv",
@@ -407,6 +417,7 @@ const I18N = {
     ctaText:"¿Te gustó el cuento? Consíguelo en edición imprimible o audiolibro y guárdalo para siempre.", ctaBtn:"Comprar este cuento — $6.99",
     ctaAlert:"Esto es una demo — en la app real esto abriría el pago de App Store / Google Play.",
     restartLink:"Crear un nuevo cuento", errorNoName:"Escribe el nombre del niño o niña para crear el cuento.",
+    consentLabel:"Soy el padre, madre o tutor legal de este niño o niña, y doy mi consentimiento para crear un cuento personalizado para él/ella.", errorNoConsent:"Confirma que eres el padre, madre o tutor del niño o niña antes de continuar.",
     errorGeneric:"No se pudo crear el cuento. Inténtalo de nuevo en un momento. (", libraryLabel:"Tus cuentos hasta ahora",
     noPhotoAlt:"sin foto — se usará un héroe genérico de cuento",
     plansTitle:"Planes", planName_free:"Gratis", planName_weekly:"Semanal", planName_monthly:"Mensual", planName_compile:"Libro de Cuentos",
@@ -440,6 +451,7 @@ const I18N = {
     ctaText:"Hat die Geschichte gefallen? Als Druck- oder Hörbuchversion sichern und für immer behalten.", ctaBtn:"Geschichte kaufen — $6.99",
     ctaAlert:"Dies ist eine Demo — in der echten App würde hier der App Store / Google Play Kauf starten.",
     restartLink:"Neue Geschichte erstellen", errorNoName:"Gib den Namen des Kindes ein, um die Geschichte zu erstellen.",
+    consentLabel:"Ich bin Elternteil oder gesetzlicher Vormund dieses Kindes und stimme zu, eine personalisierte Geschichte für es zu erstellen.", errorNoConsent:"Bitte bestätige, dass du Elternteil oder Vormund des Kindes bist, bevor du fortfährst.",
     errorGeneric:"Die Geschichte konnte nicht erstellt werden. Bitte versuch es gleich noch einmal. (", libraryLabel:"Deine bisherigen Geschichten",
     noPhotoAlt:"kein Foto — ein allgemeiner Buchheld wird verwendet",
     plansTitle:"Pakete", planName_free:"Kostenlos", planName_weekly:"Wöchentlich", planName_monthly:"Monatlich", planName_compile:"Geschichtenbuch",
@@ -473,6 +485,7 @@ const I18N = {
     ctaText:"L'histoire t'a plu ? Obtiens-la en version imprimable ou audio et garde-la pour toujours.", ctaBtn:"Acheter cette histoire — $6.99",
     ctaAlert:"Ceci est une démo — dans l'application réelle, cela ouvrirait le paiement App Store / Google Play.",
     restartLink:"Créer une nouvelle histoire", errorNoName:"Indique le prénom de l'enfant pour créer l'histoire.",
+    consentLabel:"Je suis le parent ou le tuteur légal de cet enfant, et je consens à créer une histoire personnalisée pour lui/elle.", errorNoConsent:"Merci de confirmer que tu es le parent ou le tuteur de l'enfant avant de continuer.",
     errorGeneric:"Impossible de créer l'histoire. Réessaie dans un instant. (", libraryLabel:"Tes histoires jusqu'ici",
     noPhotoAlt:"pas de photo — un héros de conte générique sera utilisé",
     plansTitle:"Forfaits", planName_free:"Gratuit", planName_weekly:"Hebdomadaire", planName_monthly:"Mensuel", planName_compile:"Livre d'Histoires",
@@ -733,6 +746,7 @@ function applyLanguage(){
   document.getElementById('lblPhoto').textContent = t.lblPhoto;
   document.getElementById('photoUploadBtn').textContent = t.photoUploadBtn;
   document.getElementById('photoHint').textContent = t.photoHint;
+  document.getElementById('lblConsent').textContent = t.consentLabel;
 
   document.getElementById('lblWorld').textContent = t.lblWorld;
   renderWorldChips(true);
@@ -788,6 +802,7 @@ document.getElementById('childPhoto').addEventListener('change', function(e){
 
 async function generateStory(){
   const t = I18N[currentLang];
+  if(!document.getElementById('parentConsent').checked){ showError(t.errorNoConsent); return; }
   const name = document.getElementById('childName').value.trim();
   if(!name){ showError(t.errorNoName); return; }
   if(remainingQuota() <= 0){ updateQuotaUI(); return; }
