@@ -387,8 +387,8 @@ const I18N = {
     errorGeneric:"Nem sikerült elkészíteni a mesét. Próbáld újra egy pillanat múlva. (", libraryLabel:"Eddigi meséid",
     noPhotoAlt:"nincs fotó — egy általános mesehős fog megjelenni",
     plansTitle:"Csomagok", planName_free:"Ingyenes", planName_weekly:"Heti", planName_monthly:"Havi", planName_compile:"Meséskönyv",
-    planDesc_free:"3 mese összesen", planDesc_weekly:"2 mese hetente, havonta számlázva", planDesc_monthly:"20 mese havonta",
-    planDesc_compile:"Egyszeri vásárlás — állítsd össze a meséidből a teljes meséskönyvet, válaszd ki, melyik meséket szeretnéd benne, egészítsd ki saját fotókkal, majd töltsd le vagy nyomtasd ki",
+    planDesc_free:"3 mese összesen", planDesc_weekly:"2 mese hetente, havonta számlávva", planDesc_monthly:"20 mese havonta",
+    planDesc_compile:"Egyszeri vásárlas — állítsd össze a meséidől a teljes meséskönyvet, válaszd ki, melyik meséket szeretnéd benne, egészítsd ki saját fotókkal, majd töltsd le vagy nyomtasd ki",
     oneTimeLabel:"egyszeri", addonOwnedBadge:"Megvásárolva",
     compileSetupTitle:"Válaszd ki, mely mesék kerüljenek bele", compileExtraPhotosLabel:"Saját fotók hozzáadása (opcionális)", compileExtraPhotosBtn:"Fotók hozzáadása",
     compileConfirmBtn:"Meséskönyv összeállítása ✨", compileCancelBtn:"Mégse", noStorySelectedError:"Válassz ki legalább egy mesét.",
@@ -397,7 +397,7 @@ const I18N = {
     currentPlanBadge:"Jelenlegi csomag", selectPlanBtn:"Váltás erre",
     quotaRemaining:"{used} / {quota} mese felhasználva", quotaExceededTitle:"Elfogyott ebben az időszakban a mesekvótád",
     quotaExceededMsg:"Válts nagyobb csomagra a folytatáshoz.",
-    compileBtn:"📖 Meséskönyv összeállítása", compileTitleSuffix:" Meséskönyve",
+    compileBtn:"📖 Meséskönyv összeallítása", compileTitleSuffix:" Meséskönyve",
     demoPlanNote:"(demó — az éles appban itt indulna az App Store / Google Play fizetés)"
   },
   es:{ langLabel:"Español", ttsTag:"es-ES", promptLang:"Spanish",
@@ -574,47 +574,171 @@ let extraPhotos = []; // data URLs for photos the parent supplements the compile
 let isCompiledBook = false; // true when the open book is a compiled storybook (enables download/print)
 
 /* =========================================================
-   ILLUSTRATION PROVIDER — plug in Seedream / BytePlus ModelArk here.
-   Two distinct calls, both off by default (safe placeholder mode):
-   1) generateCharacterPortrait — ONE call per story, turns the uploaded
-      photo into a fixed stylized character. Reused in every page header,
-      so you never need to re-render the child's likeness per scene.
-   2) generateIllustration — per-page scene art. Deliberately does NOT
-      need the child's likeness at all (that's handled once, above),
-      which keeps every single generation call much simpler and more
-      reliable than trying to animate a consistent character per page.
+   ILLUSTRATION PROVIDER — the child's photo is turned into a stylized
+   storybook character entirely on-device, with a Canvas image filter
+   (edge-detection outlines + color posterization + saturation boost).
+   No network call, no API key, no per-image cost — runs for free,
+   forever, for every user, online or offline.
    ========================================================= */
-const IMAGE_PROVIDER = {
-  enabled: true,
-  endpoint: "https://stardust-tales-ai.vercel.app/api/generate-avatar", // free Google Gemini image model, see /api/generate-avatar.js
-  apiKey: "",   // never hardcode a real key in a shipped client — call this through your own backend instead
-  characterStyleRef: "storybook-v1"
-};
-
-async function generateCharacterPortrait(photoDataUrl, ageBand){
-  if(!IMAGE_PROVIDER.enabled || !IMAGE_PROVIDER.endpoint || !photoDataUrl) return null;
-  try{
-    const res = await fetch(IMAGE_PROVIDER.endpoint, {
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({ source_image:photoDataUrl, age_band:ageBand })
-    });
-    if(!res.ok) return null;
-    const data = await res.json();
-    return data.image_url || null;
-  }catch(e){ return null; }
+function clamp255(v){ return v<0?0:(v>255?255:v); }
+function boxBlur3(data, w, h){
+  const out = new Uint8ClampedArray(data.length);
+  for(let y=0; y<h; y++){
+    for(let x=0; x<w; x++){
+      let r=0,g=0,b=0,a=0,n=0;
+      for(let dy=-1; dy<=1; dy++){
+        const yy = y+dy; if(yy<0||yy>=h) continue;
+        for(let dx=-1; dx<=1; dx++){
+          const xx = x+dx; if(xx<0||xx>=w) continue;
+          const i = (yy*w+xx)*4;
+          r+=data[i]; g+=data[i+1]; b+=data[i+2]; a+=data[i+3]; n++;
+        }
+      }
+      const o = (y*w+x)*4;
+      out[o]=r/n; out[o+1]=g/n; out[o+2]=b/n; out[o+3]=a/n;
+    }
+  }
+  return out;
 }
+function cartoonifyImage(imageDataUrl){
+  return new Promise((resolve)=>{
+    try{
+      const img = new Image();
+      img.onload = function(){
+        try{
+          const maxDim = 640;
+          let w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+          if(w > maxDim || h > maxDim){
+            if(w >= h){ h = Math.round(h * maxDim / w); w = maxDim; }
+            else { w = Math.round(w * maxDim / h); h = maxDim; }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          const src = ctx.getImageData(0, 0, w, h);
+
+          const gray = new Uint8ClampedArray(w*h);
+          for(let i=0, p=0; i<src.data.length; i+=4, p++){
+            gray[p] = (src.data[i]*0.299 + src.data[i+1]*0.587 + src.data[i+2]*0.114) | 0;
+          }
+          const edge = new Uint8ClampedArray(w*h);
+          const gx = [-1,0,1,-2,0,2,-1,0,1], gy = [-1,-2,-1,0,0,0,1,2,1];
+          for(let y=1; y<h-1; y++){
+            for(let x=1; x<w-1; x++){
+              let sx=0, sy=0, k=0;
+              for(let dy=-1; dy<=1; dy++){
+                for(let dx=-1; dx<=1; dx++){
+                  const v = gray[(y+dy)*w + (x+dx)];
+                  sx += v*gx[k]; sy += v*gy[k]; k++;
+                }
+              }
+              const mag = Math.sqrt(sx*sx + sy*sy);
+              edge[y*w+x] = mag > 90 ? 255 : 0;
+            }
+          }
+
+          let data = new Uint8ClampedArray(src.data);
+          data = boxBlur3(data, w, h);
+          data = boxBlur3(data, w, h);
+
+          const levels = 6;
+          const step = 255/(levels-1);
+          for(let i=0; i<data.length; i+=4){
+            let r = data[i], g = data[i+1], b = data[i+2];
+            const lum = 0.299*r + 0.587*g + 0.114*b;
+            const sat = 1.3;
+            r = clamp255(lum + (r-lum)*sat);
+            g = clamp255(lum + (g-lum)*sat);
+            b = clamp255(lum + (b-lum)*sat);
+            data[i]   = Math.round(Math.round(r/step)*step);
+            data[i+1] = Math.round(Math.round(g/step)*step);
+            data[i+2] = Math.round(Math.round(b/step)*step);
+          }
+
+          for(let p=0; p<edge.length; p++){
+            if(edge[p]){
+              const i = p*4;
+              data[i] = 30; data[i+1] = 30; data[i+2] = 35;
+            }
+          }
+
+          const out = new ImageData(data, w, h);
+          ctx.putImageData(out, 0, 0);
+          resolve(canvas.toDataURL('image/jpeg', 0.9));
+        }catch(e){ resolve(imageDataUrl); }
+      };
+      img.onerror = function(){ resolve(imageDataUrl); };
+      img.src = imageDataUrl;
+    }catch(e){ resolve(imageDataUrl); }
+  });
+}
+async function generateCharacterPortrait(photoDataUrl, ageBand){
+  if(!photoDataUrl) return null;
+  try{ return await cartoonifyImage(photoDataUrl); }catch(e){ return null; }
+}
+function hexPairFromGradient(gradStr){
+  const m = (gradStr||'').match(/#([0-9a-fA-F]{3,6})/g) || ['#ffffff','#eeeeee'];
+  return [m[0] || '#ffffff', m[1] || m[0] || '#eeeeee'];
+}
+/* Per-page illustration: composites the child's own stylized cartoon portrait
+   (generated once, see generateCharacterPortrait) as the storybook character
+   standing inside a themed backdrop that matches THAT page's motif keyword
+   (chosen by the story generator to match what happens on that page). This is
+   how every single page shows the child's own storybook-character photo in a
+   scene tied to that page's part of the story, entirely via Canvas — no
+   network call, no API key, no per-image cost. */
 async function generateIllustration(page){
-  if(true) return null; // per-page illustrations disabled - only the one-time character portrait uses IMAGE_PROVIDER, see generateCharacterPortrait
   try{
-    const res = await fetch(IMAGE_PROVIDER.endpoint, {
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({ mode:"scene", style_ref:IMAGE_PROVIDER.characterStyleRef, scene:page.motif, scene_text:page.text })
-    });
-    if(!res.ok) return null;
-    const data = await res.json();
-    return data.image_url || null;
+    const w = 640, h = 400;
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    const m = MOTIFS[page.motif] || MOTIFS.star;
+    const [c1, c2] = hexPairFromGradient(m.grad);
+    const grad = ctx.createLinearGradient(0, 0, w, h);
+    grad.addColorStop(0, c1);
+    grad.addColorStop(1, c2);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, w, h);
+
+    ctx.save();
+    ctx.globalAlpha = 0.35;
+    ctx.font = '220px "Noto Color Emoji","Apple Color Emoji","Segoe UI Emoji",sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(m.emoji || '⭐', w * 0.75, h * 0.4);
+    ctx.restore();
+
+    ctx.save();
+    ctx.globalAlpha = 0.18;
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.ellipse(w * 0.32, h * 0.86, 95, 20, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    if(headerAvatarUrl){
+      const charImg = await new Promise((resolve) => {
+        const im = new Image();
+        im.onload = () => resolve(im);
+        im.onerror = () => resolve(null);
+        im.src = headerAvatarUrl;
+      });
+      if(charImg){
+        const targetH = h * 0.72;
+        const targetW = targetH * (charImg.width / charImg.height);
+        const cx = w * 0.32 - targetW / 2;
+        const cy = h - targetH - h * 0.06;
+        ctx.save();
+        ctx.shadowColor = 'rgba(0,0,0,0.25)';
+        ctx.shadowBlur = 14;
+        ctx.shadowOffsetY = 6;
+        ctx.drawImage(charImg, cx, cy, targetW, targetH);
+        ctx.restore();
+      }
+    }
+    return canvas.toDataURL('image/jpeg', 0.85);
   }catch(e){ return null; }
 }
 
