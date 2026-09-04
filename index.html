@@ -585,8 +585,8 @@ let isCompiledBook = false; // true when the open book is a compiled storybook (
       reliable than trying to animate a consistent character per page.
    ========================================================= */
 const IMAGE_PROVIDER = {
-  enabled: false,
-  endpoint: "", // your BytePlus ModelArk / Seedream inference endpoint
+  enabled: true,
+  endpoint: "https://stardust-tales-ai.vercel.app/api/generate-avatar", // free Google Gemini image model, see /api/generate-avatar.js
   apiKey: "",   // never hardcode a real key in a shipped client — call this through your own backend instead
   characterStyleRef: "storybook-v1"
 };
@@ -596,8 +596,8 @@ async function generateCharacterPortrait(photoDataUrl, ageBand){
   try{
     const res = await fetch(IMAGE_PROVIDER.endpoint, {
       method:"POST",
-      headers:{ "Content-Type":"application/json", "Authorization":"Bearer "+IMAGE_PROVIDER.apiKey },
-      body: JSON.stringify({ mode:"character_portrait", style_ref:IMAGE_PROVIDER.characterStyleRef, source_image:photoDataUrl, age_band:ageBand })
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ source_image:photoDataUrl, age_band:ageBand })
     });
     if(!res.ok) return null;
     const data = await res.json();
@@ -605,11 +605,11 @@ async function generateCharacterPortrait(photoDataUrl, ageBand){
   }catch(e){ return null; }
 }
 async function generateIllustration(page){
-  if(!IMAGE_PROVIDER.enabled || !IMAGE_PROVIDER.endpoint) return null;
+  if(true) return null; // per-page illustrations disabled - only the one-time character portrait uses IMAGE_PROVIDER, see generateCharacterPortrait
   try{
     const res = await fetch(IMAGE_PROVIDER.endpoint, {
       method:"POST",
-      headers:{ "Content-Type":"application/json", "Authorization":"Bearer "+IMAGE_PROVIDER.apiKey },
+      headers:{ "Content-Type":"application/json" },
       body: JSON.stringify({ mode:"scene", style_ref:IMAGE_PROVIDER.characterStyleRef, scene:page.motif, scene_text:page.text })
     });
     if(!res.ok) return null;
