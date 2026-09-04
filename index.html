@@ -619,9 +619,11 @@ async function generateIllustration(page){
 }
 
 /* =========================================================
-   NATIVE PURCHASE BRIDGE — see purchase-bridge.js in the Capacitor
-   project for the real RevenueCat wiring. Falls back to a demo alert
-   until window.NativePurchase is injected by the native shell.
+   NATIVE PURCHASE BRIDGE — see purchase-bridge.js (loaded at the bottom
+   of this page) for the real Google Play Billing wiring, via the
+   Digital Goods API + Payment Request API. Falls back to a demo alert
+   outside the installed Android app, where window.NativePurchase's
+   purchase methods return false.
    ========================================================= */
 async function purchaseStory(storyId){
   if(window.NativePurchase && typeof window.NativePurchase.purchaseStory === 'function'){
