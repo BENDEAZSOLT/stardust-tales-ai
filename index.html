@@ -198,7 +198,7 @@
     <label id="lblPhoto"></label>
     <div class="photo-row">
       <div class="photo-preview" id="photoPreview"><span class="ph-icon">🧒</span></div>
-      <button type="button" class="photo-upload-btn" id="photoUploadBtn" onclick="document.getElementById('childPhoto').click()"></button>
+      <label class="photo-upload-btn" id="photoUploadBtn" for="childPhoto" style="touch-action:manipulation;"></label>
       <input type="file" id="childPhoto" accept="image/*" style="display:none">
     </div>
     <div class="field-note" id="photoHint"></div>
@@ -236,7 +236,7 @@
 
     <label id="compileExtraPhotosLabel"></label>
     <div class="photo-row">
-      <button type="button" class="photo-upload-btn" id="compileExtraPhotosBtn" onclick="document.getElementById('compileExtraPhotosInput').click()"></button>
+      <label class="photo-upload-btn" id="compileExtraPhotosBtn" for="compileExtraPhotosInput" style="touch-action:manipulation;"></label>
       <input type="file" id="compileExtraPhotosInput" accept="image/*" multiple style="display:none">
     </div>
     <div class="library-row" id="compileExtraPhotosPreview" style="margin-top:10px;"></div>
