@@ -38,12 +38,28 @@ const STORYBOOK_ADDON_SKU = "storybook_addon_onetime";
 let _serviceInstance = null;
 let _serviceChecked = false;
 
+// FIX (2026-09-05): this used to call window.getDigitalGoodsService() any
+// time the API surface existed ("getDigitalGoodsService" in window is true
+// in plain modern mobile Chrome too, not just inside a real installed TWA).
+// restoreEntitlementsOnLoad() below calls this unconditionally on every
+// single page load, so on a real phone this fired immediately on load and
+// appears to hang/block indefinitely on some devices — freezing the whole
+// app before the user could even tap anything, independent of the similar
+// fix already applied in index.html's own purchase flow. Only ever attempt
+// this when document.referrer proves we're actually running inside the
+// installed Android TWA (the standard "android-app://<package>" referrer
+// Chrome sets for TWA-launched pages) — never merely because the API
+// exists. Also race it against a timeout as a second safety net.
 async function getDigitalGoodsService() {
   if (_serviceChecked) return _serviceInstance;
   _serviceChecked = true;
-  if (!("getDigitalGoodsService" in window)) return null;
+  const insideInstalledTwa = /^android-app:\/\//.test(document.referrer || "");
+  if (!insideInstalledTwa || !("getDigitalGoodsService" in window)) return null;
   try {
-    _serviceInstance = await window.getDigitalGoodsService("https://play.google.com/billing");
+    _serviceInstance = await Promise.race([
+      window.getDigitalGoodsService("https://play.google.com/billing"),
+      new Promise(resolve => setTimeout(() => resolve(null), 1500))
+    ]);
   } catch (e) {
     console.warn("Digital Goods Service unavailable:", e);
     _serviceInstance = null;

@@ -596,15 +596,27 @@ let hasStorybookAddon = false; // one-time purchase flag, independent of current
 // this fix also fired the check eagerly at page load (before any user
 // interaction), which made the whole app look frozen the moment someone
 // tapped a plan, since every purchase button now waited on a promise that
-// would never settle. Two changes: (1) never call this before an actual
-// user tap — only compute it lazily, the first time a plan/addon button is
-// pressed; (2) race it against a timeout so a stuck browser call can never
-// block a purchase attempt for more than ~1.5s — it just falls back to the
-// demo path, exactly like "unsupported" would.
+// would never settle. The 1.5s timeout race added then did NOT fix it on
+// a real phone — that strongly suggests the underlying browser call blocks
+// the whole page's JS thread synchronously on that device, so even a
+// setTimeout-based timeout never gets a chance to fire.
+//
+// FIX (2026-09-05, third pass): stop calling getDigitalGoodsService() at
+// all unless we're highly confident we're actually running inside the
+// installed Android TWA app — never just because the browser happens to
+// expose the API. The standard, reliable way to detect a real installed
+// TWA is document.referrer starting with "android-app://" (that's how
+// Chrome marks pages launched from a Trusted Web Activity; an ordinary
+// browser tab, an in-app browser, or a phone/desktop browser testing the
+// plain URL will never have this). Since this app isn't published as a
+// real TWA yet, this check is false for every phone/browser test today,
+// so the risky native call is skipped entirely and the demo path applies
+// immediately — no async wait, no possibility of a freeze.
 let _nativeBridgePromise = null;
 function hasNativeBridge(){
   if(!_nativeBridgePromise){
-    _nativeBridgePromise = (window.NativePurchase && ('getDigitalGoodsService' in window))
+    const insideInstalledTwa = /^android-app:\/\//.test(document.referrer || '');
+    _nativeBridgePromise = (insideInstalledTwa && window.NativePurchase && ('getDigitalGoodsService' in window))
       ? Promise.race([
           window.getDigitalGoodsService('https://play.google.com/billing').then(s=>!!s).catch(()=>false),
           new Promise(resolve => setTimeout(()=>resolve(false), 1500))
