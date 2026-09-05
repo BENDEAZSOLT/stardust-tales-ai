@@ -590,9 +590,9 @@ let hasStorybookAddon = false; // one-time purchase flag, independent of current
 // It never runs once a real native purchase bridge is present (see the
 // purchasePlan/purchaseAddon guards below), so it has zero effect on real
 // Android purchases or their entitlement source of truth.
-function saveDemoPlanState(){
+async function saveDemoPlanState(){
   try{
-    const hasRealBridge = window.NativePurchase && typeof window.NativePurchase.getActivePlan === 'function' && ('getDigitalGoodsService' in window);
+    let hasRealBridge = false; if(window.NativePurchase && typeof window.NativePurchase.getActivePlan === 'function' && ('getDigitalGoodsService' in window)){ hasRealBridge = !!(await window.getDigitalGoodsService('https://play.google.com/billing').catch(()=>null)); }
     if(hasRealBridge) return;
     localStorage.setItem('stardustDemoPlan', currentPlan);
     localStorage.setItem('stardustDemoAddon', hasStorybookAddon ? '1' : '0');
