@@ -60,18 +60,8 @@ export default async function handler(req, res) {
 
   const sceneHint = MOTIF_SCENE_HINTS[motif] || 'a warm, magical storybook scene';
   const storyBit = (pageText || '').slice(0, 400);
-  // FIX (2026-09-05): the previous prompt + default params produced an
-  // edited close-up of the reference photo instead of a real storybook
-  // scene, because FLUX.1 Kontext is an image-EDIT model that stays close
-  // to the input photo's framing/composition unless pushed hard the other
-  // way. Two changes fix this: (1) the prompt now explicitly forbids a
-  // portrait/selfie/headshot crop and asks for a wide, full-body scene shot
-  // from a distance, describing what the character is DOING; (2) a much
-  // higher guidance_scale (how strongly the model follows the text prompt
-  // vs. copying the input image) plus an explicit landscape aspect_ratio
-  // that matches the app's illustration box, instead of inheriting the
-  // reference photo's own (often portrait/selfie) aspect ratio.
-  const prompt = `Full-body wide-shot children's storybook illustration, soft cartoon/watercolor style. This is NOT a portrait, NOT a headshot, NOT a close-up, NOT a selfie — show the whole character from a distance, small within a big detailed environment, the way an illustrated page in a picture book looks. Redraw the entire scene around them: ${sceneHint}. Keep the child's real face, hair and recognizable features so they're clearly the same person, but change the framing, pose and background completely to depict this moment from their story: "${storyBit}". The character should be actively doing something in the scene, viewed from a distance, surrounded by rich background detail on all sides. Friendly, age-appropriate, no scary elements, no text or letters anywhere in the image.`;
+  const scenePrompt = storyBit ? `A moment where the character is: ${sceneHint}, matching the mood and action of this part of their adventure` : `A moment where the character is ${sceneHint}`;
+  const prompt = `A single wordless children's book illustration, soft cartoon/watercolor style, full-body wide shot from a distance — NOT a portrait, NOT a headshot, NOT a close-up, NOT a selfie. Show the whole character small within a big, detailed environment, actively doing something. ${scenePrompt}. Keep the child's real face, hair and recognizable features so they're clearly the same person, but completely change the framing, pose and background. Friendly, age-appropriate, no scary elements. Absolutely no text, letters, numbers, words, writing, captions, speech bubbles, or symbols anywhere in the image — not on signs, books, clothing, objects, or the background. This is a pure picture with zero written content of any kind.`;
 
   try {
     const falRes = await fetch('https://fal.run/fal-ai/flux-pro/kontext', {
