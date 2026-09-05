@@ -542,6 +542,17 @@ const STORY_API = {
   endpoint: "https://stardust-tales-ai.vercel.app/api/generate-story" // set once the Vercel backend was deployed
 };
 
+/* Paid-tier per-page AI illustration (added 2026-09-05). Free plan always
+   gets the zero-cost Canvas composite below (generateIllustrationCanvas).
+   Paying plans (weekly/monthly) get a real AI-generated scene that keeps the
+   child's actual likeness, via /api/generate-illustration.js (FLUX.1 Kontext
+   [pro] on fal.ai — needs FAL_KEY set in Vercel env vars). If that call
+   fails or the endpoint isn't configured yet, it falls back to the same
+   free Canvas composite so nothing ever breaks. */
+const ILLUSTRATION_API = {
+  endpoint: "https://stardust-tales-ai.vercel.app/api/generate-illustration"
+};
+
 const PLANS = {
   free:    { id:'free',    quota:3,  billingPeriod:'lifetime', price:0 },
   // 2 stories/week, billed monthly — billingPeriod drives the price suffix shown to the user.
@@ -570,6 +581,30 @@ let profileAvatars = {}; // childName -> avatarUrl cache, so the same story-book
 let currentPlan = 'free';
 let storiesUsedInPeriod = 0; // demo-only counter — see note near purchasePlan() about why real enforcement must be server-side
 let hasStorybookAddon = false; // one-time purchase flag, independent of currentPlan's generation quota
+
+// Web-testing persistence ONLY: outside the installed Android TWA there is no
+// Play Billing to restore entitlements from on next load (purchase-bridge.js's
+// restoreEntitlementsOnLoad() is a no-op there), so a plan picked via the demo
+// fallback below used to reset to 'free' on every refresh. This mirrors that
+// choice into localStorage so testers can actually use the app across reloads.
+// It never runs once a real native purchase bridge is present (see the
+// purchasePlan/purchaseAddon guards below), so it has zero effect on real
+// Android purchases or their entitlement source of truth.
+function saveDemoPlanState(){
+  try{
+    const hasRealBridge = window.NativePurchase && typeof window.NativePurchase.getActivePlan === 'function' && ('getDigitalGoodsService' in window);
+    if(hasRealBridge) return;
+    localStorage.setItem('stardustDemoPlan', currentPlan);
+    localStorage.setItem('stardustDemoAddon', hasStorybookAddon ? '1' : '0');
+  }catch(e){}
+}
+(function restoreDemoPlanState(){
+  try{
+    const savedPlan = localStorage.getItem('stardustDemoPlan');
+    if(savedPlan && PLANS[savedPlan]) currentPlan = savedPlan;
+    if(localStorage.getItem('stardustDemoAddon') === '1') hasStorybookAddon = true;
+  }catch(e){}
+})();
 let extraPhotos = []; // data URLs for photos the parent supplements the compiled storybook with
 let isCompiledBook = false; // true when the open book is a compiled storybook (enables download/print)
 
@@ -681,14 +716,46 @@ function hexPairFromGradient(gradStr){
   const m = (gradStr||'').match(/#([0-9a-fA-F]{3,6})/g) || ['#ffffff','#eeeeee'];
   return [m[0] || '#ffffff', m[1] || m[0] || '#eeeeee'];
 }
-/* Per-page illustration: composites the child's own stylized cartoon portrait
-   (generated once, see generateCharacterPortrait) as the storybook character
-   standing inside a themed backdrop that matches THAT page's motif keyword
-   (chosen by the story generator to match what happens on that page). This is
-   how every single page shows the child's own storybook-character photo in a
-   scene tied to that page's part of the story, entirely via Canvas — no
-   network call, no API key, no per-image cost. */
+/* Per-page illustration dispatcher: paid plans get a real AI-generated scene
+   (see ILLUSTRATION_API above), free plans get the zero-cost Canvas
+   composite (generateIllustrationCanvas below). Every page shows the child's
+   own storybook character in a scene tied to that page's part of the story
+   either way — the paid version just keeps the child's actual face. */
 async function generateIllustration(page){
+  // Paid tier: try the real AI scene first — keeps the child's actual face,
+  // depicting this specific page's moment in the story. Any failure (no
+  // endpoint yet, no FAL_KEY configured, network error, quota) falls back to
+  // the free Canvas composite further down, so the app never breaks.
+  if(currentPlan !== 'free' && ILLUSTRATION_API.endpoint && childPhotoDataUrl){
+    try{
+      const res = await fetch(ILLUSTRATION_API.endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          childPhotoDataUrl,
+          pageText: page.text || '',
+          motif: page.motif || 'star'
+        })
+      });
+      if(res.ok){
+        const data = await res.json();
+        if(data && data.imageUrl) return data.imageUrl;
+      } else {
+        console.warn('AI illustration request failed with status', res.status, '— using free composite instead.');
+      }
+    }catch(e){
+      console.warn('AI illustration unavailable, using free composite instead:', e);
+    }
+  }
+  return generateIllustrationCanvas(page);
+}
+
+/* Free-tier illustration: composites the child's own stylized cartoon
+   portrait (generated once, see generateCharacterPortrait) as the storybook
+   character standing inside a themed backdrop that matches THAT page's
+   motif keyword. Entirely via Canvas — no network call, no API key, no
+   per-image cost. Also the fallback path for the paid tier above. */
+async function generateIllustrationCanvas(page){
   try{
     const w = 640, h = 400;
     const canvas = document.createElement('canvas');
@@ -769,32 +836,46 @@ async function purchaseStory(storyId){
    as the actual enforcement layer.
    ========================================================= */
 async function purchasePlan(planId){
-  if(planId === 'free'){ currentPlan = 'free'; storiesUsedInPeriod = 0; renderPlans(); return true; }
+  if(planId === 'free'){ currentPlan = 'free'; storiesUsedInPeriod = 0; saveDemoPlanState(); renderPlans(); return true; }
+  const hasNativeBridge = window.NativePurchase && typeof window.NativePurchase.purchasePlan === 'function';
   let success = false;
-  if(window.NativePurchase && typeof window.NativePurchase.purchasePlan === 'function'){
+  if(hasNativeBridge){
+    // Real Android purchase attempt. FIX (2026-09-05): this used to fall through
+    // to the demo assignment below unconditionally, so a cancelled or failed
+    // real purchase still granted the plan for free. Only apply it on success now.
     success = await window.NativePurchase.purchasePlan(planId, PLANS[planId].price);
+    if(success){ currentPlan = planId; storiesUsedInPeriod = 0; }
   } else {
+    // Demo/testing fallback: no native purchase bridge exists outside the
+    // installed Android app, so switch the plan locally for testing the quota
+    // gating and storybook compilation feature. Persisted via
+    // saveDemoPlanState() below so it survives a reload — see that function's
+    // comment. This branch never runs when a real bridge is present.
     alert(I18N[currentLang].ctaAlert);
+    currentPlan = planId;
+    storiesUsedInPeriod = 0;
+    success = true;
   }
-  // Demo fallback: without a native bridge we still switch the plan locally so you
-  // can test the quota gating and storybook compilation feature while building.
-  // Remove this fallback before shipping — see the note above.
-  currentPlan = planId;
-  storiesUsedInPeriod = 0;
+  saveDemoPlanState();
   renderPlans();
   return success;
 }
 function remainingQuota(){ return Math.max(0, PLANS[currentPlan].quota - storiesUsedInPeriod); }
 
 async function purchaseAddon(){
+  const hasNativeBridge = window.NativePurchase && typeof window.NativePurchase.purchaseStorybookAddon === 'function';
   let success = false;
-  if(window.NativePurchase && typeof window.NativePurchase.purchaseStorybookAddon === 'function'){
+  if(hasNativeBridge){
+    // FIX (2026-09-05): only grant the add-on when the real purchase actually succeeded.
     success = await window.NativePurchase.purchaseStorybookAddon(STORYBOOK_ADDON.price);
+    if(success){ hasStorybookAddon = true; }
   } else {
+    // Demo/testing fallback, same rationale as purchasePlan() above.
     alert(I18N[currentLang].ctaAlert);
+    hasStorybookAddon = true;
+    success = true;
   }
-  // Demo fallback, same caveat as purchasePlan() above — remove before shipping.
-  hasStorybookAddon = true;
+  saveDemoPlanState();
   renderPlans();
   return success;
 }
