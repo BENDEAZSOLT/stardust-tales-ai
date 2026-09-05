@@ -837,7 +837,7 @@ async function purchaseStory(storyId){
    ========================================================= */
 async function purchasePlan(planId){
   if(planId === 'free'){ currentPlan = 'free'; storiesUsedInPeriod = 0; saveDemoPlanState(); renderPlans(); return true; }
-  const hasNativeBridge = window.NativePurchase && typeof window.NativePurchase.purchasePlan === 'function';
+  const hasNativeBridge = window.NativePurchase && ("getDigitalGoodsService" in window);
   let success = false;
   if(hasNativeBridge){
     // Real Android purchase attempt. FIX (2026-09-05): this used to fall through
@@ -863,7 +863,7 @@ async function purchasePlan(planId){
 function remainingQuota(){ return Math.max(0, PLANS[currentPlan].quota - storiesUsedInPeriod); }
 
 async function purchaseAddon(){
-  const hasNativeBridge = window.NativePurchase && typeof window.NativePurchase.purchaseStorybookAddon === 'function';
+  const hasNativeBridge = window.NativePurchase && ("getDigitalGoodsService" in window);
   let success = false;
   if(hasNativeBridge){
     // FIX (2026-09-05): only grant the add-on when the real purchase actually succeeded.
