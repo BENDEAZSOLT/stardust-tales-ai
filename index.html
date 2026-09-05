@@ -584,24 +584,35 @@ let storiesUsedInPeriod = 0; // demo-only counter — see note near purchasePlan
 let hasStorybookAddon = false; // one-time purchase flag, independent of currentPlan's generation quota
 
 // FIX (2026-09-05): checking "is there a real Google Play Billing bridge"
-// means actually calling getDigitalGoodsService() and awaiting its result —
-// on a real device that round-trip can take a noticeable moment. The old
-// code re-ran this same await from scratch inside purchasePlan(),
+// means actually calling getDigitalGoodsService() and awaiting its result.
+// The old code re-ran this same await from scratch inside purchasePlan(),
 // purchaseAddon() AND saveDemoPlanState() on every single click (up to 3x
-// per tap), which is very likely why a plan tap looked "dead" for a bit on
-// phone even though the underlying state change (confirmed by localStorage)
-// was correct all along. Cache the result in one shared promise so the
-// check only ever runs once per page load.
+// per tap). Cache the result in one shared promise so the check only ever
+// runs once per page load.
+//
+// FIX (2026-09-05, later same day): on a real Android phone this call can
+// apparently hang indefinitely instead of resolving to null — it never
+// rejects either, so a plain .catch() does nothing. An earlier version of
+// this fix also fired the check eagerly at page load (before any user
+// interaction), which made the whole app look frozen the moment someone
+// tapped a plan, since every purchase button now waited on a promise that
+// would never settle. Two changes: (1) never call this before an actual
+// user tap — only compute it lazily, the first time a plan/addon button is
+// pressed; (2) race it against a timeout so a stuck browser call can never
+// block a purchase attempt for more than ~1.5s — it just falls back to the
+// demo path, exactly like "unsupported" would.
 let _nativeBridgePromise = null;
 function hasNativeBridge(){
   if(!_nativeBridgePromise){
     _nativeBridgePromise = (window.NativePurchase && ('getDigitalGoodsService' in window))
-      ? window.getDigitalGoodsService('https://play.google.com/billing').then(s=>!!s).catch(()=>false)
+      ? Promise.race([
+          window.getDigitalGoodsService('https://play.google.com/billing').then(s=>!!s).catch(()=>false),
+          new Promise(resolve => setTimeout(()=>resolve(false), 1500))
+        ])
       : Promise.resolve(false);
   }
   return _nativeBridgePromise;
 }
-hasNativeBridge(); // warm the cache immediately on load, before the user can tap anything
 
 // Web-testing persistence ONLY: outside the installed Android TWA there is no
 // Play Billing to restore entitlements from on next load (purchase-bridge.js's
