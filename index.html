@@ -128,6 +128,7 @@
   .plan-desc{ font-family:'Nunito'; font-size:11px; color: rgba(255,248,237,0.65); line-height:1.4; margin-bottom:10px; min-height:44px; }
   .plan-btn{ width:100%; padding:8px; border-radius:10px; border:1px solid rgba(255,255,255,0.2); background:transparent; color: var(--page-cream); font-family:'Nunito'; font-weight:700; font-size:11.5px; cursor:pointer; }
   .plan-btn.badge{ background: var(--lamp-gold); border-color: var(--lamp-gold); color:#241a10; cursor:default; }
+  .plan-btn.pending{ opacity:.55; pointer-events:none; }
   .quota-bar{ display:flex; align-items:center; justify-content:space-between; background:#f3ead9; border-radius:12px; padding:10px 14px; margin-top:14px; font-family:'Nunito'; font-size:12px; font-weight:700; color: var(--ink-soft); }
   .upgrade-card{ background: rgba(255,143,126,.14); border:1px solid rgba(255,143,126,.4); border-radius:16px; padding:16px 18px; text-align:center; margin-top:14px; }
   .upgrade-card h4{ font-family:'Baloo 2'; color:#fff; margin:0 0 6px; font-size:15px; }
@@ -198,8 +199,8 @@
     <label id="lblPhoto"></label>
     <div class="photo-row">
       <div class="photo-preview" id="photoPreview"><span class="ph-icon">🧒</span></div>
-      <label class="photo-upload-btn" id="photoUploadBtn" for="childPhoto" style="touch-action:manipulation;"></label>
-      <input type="file" id="childPhoto" accept="image/*" style="display:none">
+      <label class="photo-upload-btn" id="photoUploadBtn" style="touch-action:manipulation;"></label>
+      <input type="file" id="childPhoto" accept="image/*" style="position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;">
     </div>
     <div class="field-note" id="photoHint"></div>
 
@@ -236,8 +237,8 @@
 
     <label id="compileExtraPhotosLabel"></label>
     <div class="photo-row">
-      <label class="photo-upload-btn" id="compileExtraPhotosBtn" for="compileExtraPhotosInput" style="touch-action:manipulation;"></label>
-      <input type="file" id="compileExtraPhotosInput" accept="image/*" multiple style="display:none">
+      <label class="photo-upload-btn" id="compileExtraPhotosBtn" style="touch-action:manipulation;"></label>
+      <input type="file" id="compileExtraPhotosInput" accept="image/*" multiple style="position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;">
     </div>
     <div class="library-row" id="compileExtraPhotosPreview" style="margin-top:10px;"></div>
 
@@ -386,7 +387,7 @@ const I18N = {
     consentLabel:"Én vagyok ennek a gyermeknek a szülője vagy törvényes gondviselője, és hozzájárulok, hogy személyre szabott mesét készítsünk neki.", errorNoConsent:"Kérjük, erősítsd meg, hogy a gyermek szülője vagy gondviselője vagy, mielőtt folytatod.",
     errorGeneric:"Nem sikerült elkészíteni a mesét. Próbáld újra egy pillanat múlva. (", libraryLabel:"Eddigi meséid",
     noPhotoAlt:"nincs fotó — egy általános mesehős fog megjelenni",
-    plansTitle:"Csomagok", planName_free:"Ingyenes", planName_weekly:"Heti", planName_monthly:"Havi", planName_compile:"Meséskönyv",
+    plansTitle:"Csomagok", planName_free:"Ingyenes", planName_weekly:"Havi", planName_monthly:"Havi", planName_compile:"Meséskönyv",
     planDesc_free:"3 mese összesen", planDesc_weekly:"2 mese hetente, havonta számlázva", planDesc_monthly:"20 mese havonta",
     planDesc_compile:"Egyszeri vásárlás — állítsd össze a meséidből a teljes meséskönyvet, válaszd ki, melyik meséket szeretnéd benne, egészítsd ki saját fotókkal, majd töltsd le vagy nyomtasd ki",
     oneTimeLabel:"egyszeri", addonOwnedBadge:"Megvásárolva",
@@ -582,6 +583,26 @@ let currentPlan = 'free';
 let storiesUsedInPeriod = 0; // demo-only counter — see note near purchasePlan() about why real enforcement must be server-side
 let hasStorybookAddon = false; // one-time purchase flag, independent of currentPlan's generation quota
 
+// FIX (2026-09-05): checking "is there a real Google Play Billing bridge"
+// means actually calling getDigitalGoodsService() and awaiting its result —
+// on a real device that round-trip can take a noticeable moment. The old
+// code re-ran this same await from scratch inside purchasePlan(),
+// purchaseAddon() AND saveDemoPlanState() on every single click (up to 3x
+// per tap), which is very likely why a plan tap looked "dead" for a bit on
+// phone even though the underlying state change (confirmed by localStorage)
+// was correct all along. Cache the result in one shared promise so the
+// check only ever runs once per page load.
+let _nativeBridgePromise = null;
+function hasNativeBridge(){
+  if(!_nativeBridgePromise){
+    _nativeBridgePromise = (window.NativePurchase && ('getDigitalGoodsService' in window))
+      ? window.getDigitalGoodsService('https://play.google.com/billing').then(s=>!!s).catch(()=>false)
+      : Promise.resolve(false);
+  }
+  return _nativeBridgePromise;
+}
+hasNativeBridge(); // warm the cache immediately on load, before the user can tap anything
+
 // Web-testing persistence ONLY: outside the installed Android TWA there is no
 // Play Billing to restore entitlements from on next load (purchase-bridge.js's
 // restoreEntitlementsOnLoad() is a no-op there), so a plan picked via the demo
@@ -592,7 +613,7 @@ let hasStorybookAddon = false; // one-time purchase flag, independent of current
 // Android purchases or their entitlement source of truth.
 async function saveDemoPlanState(){
   try{
-    let hasRealBridge = false; if(window.NativePurchase && typeof window.NativePurchase.getActivePlan === 'function' && ('getDigitalGoodsService' in window)){ hasRealBridge = !!(await window.getDigitalGoodsService('https://play.google.com/billing').catch(()=>null)); }
+    const hasRealBridge = await hasNativeBridge();
     if(hasRealBridge) return;
     localStorage.setItem('stardustDemoPlan', currentPlan);
     localStorage.setItem('stardustDemoAddon', hasStorybookAddon ? '1' : '0');
@@ -835,11 +856,15 @@ async function purchaseStory(storyId){
    storage. Treat everything in this section as UI/UX scaffolding, not
    as the actual enforcement layer.
    ========================================================= */
-async function purchasePlan(planId){
+async function purchasePlan(planId, btnEl){
+  // FIX (2026-09-05): give instant visual feedback the moment the button is
+  // tapped, before any async work — this is what was missing when a tap
+  // looked like it did nothing on phone until the user left and came back.
+  if(btnEl){ btnEl.disabled = true; btnEl.classList.add('pending'); }
   if(planId === 'free'){ currentPlan = 'free'; storiesUsedInPeriod = 0; saveDemoPlanState(); renderPlans(); return true; }
-  const hasNativeBridge = (window.NativePurchase && ("getDigitalGoodsService" in window)) ? !!(await window.getDigitalGoodsService("https://play.google.com/billing").catch(()=>null)) : false;
+  const bridgeActive = await hasNativeBridge();
   let success = false;
-  if(hasNativeBridge){
+  if(bridgeActive){
     // Real Android purchase attempt. FIX (2026-09-05): this used to fall through
     // to the demo assignment below unconditionally, so a cancelled or failed
     // real purchase still granted the plan for free. Only apply it on success now.
@@ -862,10 +887,11 @@ async function purchasePlan(planId){
 }
 function remainingQuota(){ return Math.max(0, PLANS[currentPlan].quota - storiesUsedInPeriod); }
 
-async function purchaseAddon(){
-  const hasNativeBridge = (window.NativePurchase && ("getDigitalGoodsService" in window)) ? !!(await window.getDigitalGoodsService("https://play.google.com/billing").catch(()=>null)) : false;
+async function purchaseAddon(btnEl){
+  if(btnEl){ btnEl.disabled = true; btnEl.classList.add('pending'); }
+  const bridgeActive = await hasNativeBridge();
   let success = false;
-  if(hasNativeBridge){
+  if(bridgeActive){
     // FIX (2026-09-05): only grant the add-on when the real purchase actually succeeded.
     success = await window.NativePurchase.purchaseStorybookAddon(STORYBOOK_ADDON.price);
     if(success){ hasStorybookAddon = true; }
@@ -996,6 +1022,13 @@ function applyLanguage(){
 }
 
 document.getElementById('childAge').addEventListener('change', onAgeChange);
+// Explicit click-forward instead of relying on label[for] association — some
+// Android WebViews/mobile browsers fail to open the native file picker from
+// a label pointing at a hidden input, so we trigger it directly in JS. This
+// fixes the "photo button does nothing on phone" report.
+document.getElementById('photoUploadBtn').addEventListener('click', function(){
+  document.getElementById('childPhoto').click();
+});
 document.getElementById('childPhoto').addEventListener('change', function(e){
   const file = e.target.files[0];
   if(!file) return;
@@ -1177,6 +1210,9 @@ function renderCompileStoryList(){
   });
 }
 
+document.getElementById('compileExtraPhotosBtn').addEventListener('click', function(){
+  document.getElementById('compileExtraPhotosInput').click();
+});
 document.getElementById('compileExtraPhotosInput').addEventListener('change', function(e){
   const files = Array.from(e.target.files || []);
   let remaining = files.length;
@@ -1291,7 +1327,7 @@ function renderPlans(){
       : '$'+plan.price.toFixed(2)+'<span>'+(plan.billingPeriod==='week'?t.perWeek:t.perMonth)+'</span>';
     const btnHtml = id===currentPlan
       ? '<button class="plan-btn badge">'+t.currentPlanBadge+'</button>'
-      : '<button class="plan-btn" onclick="purchasePlan(\''+id+'\')">'+t.selectPlanBtn+'</button>';
+      : '<button class="plan-btn" onclick="purchasePlan(\''+id+'\', this)">'+t.selectPlanBtn+'</button>';
     card.innerHTML =
       '<div class="plan-name">'+t['planName_'+id]+'</div>'+
       '<div class="plan-price">'+priceHtml+'</div>'+
@@ -1304,7 +1340,7 @@ function renderPlans(){
   addonCard.className = 'plan-card' + (hasStorybookAddon ? ' current' : '');
   const addonBtnHtml = hasStorybookAddon
     ? '<button class="plan-btn badge">'+t.addonOwnedBadge+'</button>'
-    : '<button class="plan-btn" onclick="purchaseAddon()">'+t.selectPlanBtn+'</button>';
+    : '<button class="plan-btn" onclick="purchaseAddon(this)">'+t.selectPlanBtn+'</button>';
   addonCard.innerHTML =
     '<div class="plan-name">'+t.planName_compile+'</div>'+
     '<div class="plan-price">$'+STORYBOOK_ADDON.price.toFixed(2)+'<span>'+t.oneTimeLabel+'</span></div>'+
@@ -1395,7 +1431,7 @@ if('speechSynthesis' in window){
   speechSynthesis.getVoices();
   speechSynthesis.onvoiceschanged = ()=> speechSynthesis.getVoices();
 }
-function stopListening(){ speechSynthesis.cancel(); speaking = false; document.getElementById('listenBtn').classList.remove('speaking'); }
+function stopListening(){ if('speechSynthesis' in window){ try{ speechSynthesis.cancel(); }catch(e){} } speaking = false; document.getElementById('listenBtn').classList.remove('speaking'); }
 
 function onCtaClick(){ const current = libraryStories[libraryStories.length-1]; purchaseStory(current ? current.id : 'demo-story'); }
 
