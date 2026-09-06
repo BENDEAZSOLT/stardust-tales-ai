@@ -211,7 +211,7 @@
     <div class="chip-group" id="themeChips"></div>
 
     <label id="lblPageCount" for="pageCount"></label>
-    <input type="number" id="pageCount" min="4" max="30" value="10">
+    <input type="number" id="pageCount" min="4" max="12" value="10">
     <div class="field-note" id="pageCountHint"></div>
 
     <button class="generate-btn" id="generateBtn" onclick="generateStory()"></button>
@@ -288,11 +288,18 @@
 
 <script>
 /* ================= THEME / WORLD DATA (language-independent keys) ================= */
+// FIX (2026-09-05): expanded from 4-7 worlds per age band to a much wider
+// mix — added princess/dragon/unicorn/circus/jungle style options alongside
+// the existing ninja/knight/monster-truck/science/fashion ones, so kids
+// with very different tastes both have plenty of choices. The actual story
+// TEXT is freshly AI-written per request regardless of which world is
+// picked, so uniqueness was never limited by this list's size — but more
+// options here means more real, meaningful choice for the parent/child.
 const WORLD_BANDS = {
-  toddler: ['friendly_animals','brave_kitten','little_car','bedtime_garden'],
-  early:   ['magic_forest','ocean_deep','dino_island','superhero_school','fairy_garden','animal_rescue'],
-  middle:  ['blocky_builder','space_explorers','detective_mystery','robot_inventors','pirate_treasure','sports_champion','magic_school'],
-  tween:   ['blocky_survivors','future_racers','secret_mission','legend_hunters','music_dance','esports_arena']
+  toddler: ['friendly_animals','brave_kitten','little_car','bedtime_garden','baby_dino','teddy_picnic','puppy_park'],
+  early:   ['magic_forest','ocean_deep','dino_island','superhero_school','fairy_garden','animal_rescue','princess_castle','dragon_friend','jungle_safari','circus_wonder'],
+  middle:  ['blocky_builder','space_explorers','detective_mystery','robot_inventors','pirate_treasure','sports_champion','magic_school','ninja_academy','unicorn_valley','knight_quest','monster_truck_rally'],
+  tween:   ['blocky_survivors','future_racers','secret_mission','legend_hunters','music_dance','esports_arena','fashion_designer','wilderness_survival','science_genius','battle_knights']
 };
 function getAgeBand(age){
   age = parseInt(age,10) || 6;
@@ -301,7 +308,12 @@ function getAgeBand(age){
   if(age <= 10) return 'middle';
   return 'tween';
 }
-const BAND_DEFAULT_PAGES = { toddler:6, early:10, middle:18, tween:26 };
+// Capped at 12 (was up to 30) as part of the 2026-09-05 repricing: every
+// page beyond this triggers a real fal.ai illustration cost, so bounding
+// the max page count bounds the worst-case cost per story. 12 pages is
+// still a full picture-book length.
+const MAX_PAGE_COUNT = 12;
+const BAND_DEFAULT_PAGES = { toddler:6, early:8, middle:10, tween:12 };
 const BAND_READING_LEVEL = {
   toddler: "very simple 4-8 word sentences, lots of repetition, concrete everyday nouns, no scary or tense moments, purely gentle and reassuring",
   early:   "simple, clear sentences, a small gentle challenge that resolves happily, light and playful tone",
@@ -324,11 +336,13 @@ const MOTIFS = {
   music:{emoji:'🎵',grad:'linear-gradient(135deg,#ffe0f0,#ffc2e3)'}, arena:{emoji:'🎮',grad:'linear-gradient(135deg,#dcefff,#b8ddff)'}
 };
 const THEME_LABELS = {
-  en:{friendly_animals:"🐰 Friendly Animal Friends",brave_kitten:"🐱 Brave Little Kitten",little_car:"🚗 Little Car Adventure",bedtime_garden:"🌷 Bedtime Garden",magic_forest:"🌲 Magic Forest",ocean_deep:"🌊 Deep Ocean",dino_island:"🦕 Dino Island",superhero_school:"🦸 Superhero School",fairy_garden:"🧚 Fairy Garden",blocky_builder:"🧱 Blocky Builder World",space_explorers:"🚀 Space Explorers",detective_mystery:"🔍 Detective Mystery",robot_inventors:"🤖 Robot Inventors",pirate_treasure:"🏴 Pirate Treasure Hunt",blocky_survivors:"🧱 Blocky World Survivors",future_racers:"🏎️ Future Racers",secret_mission:"🕵️ Secret Mission",legend_hunters:"🗺️ Legend Hunters",animal_rescue:"🐾 Animal Rescue Team",sports_champion:"🏆 Sports Champion Adventure",magic_school:"🪄 Magic School",music_dance:"🎵 Music & Dance Story",esports_arena:"🎮 Game Arena Adventure"},
-  hu:{friendly_animals:"🐰 Barátságos állatkert",brave_kitten:"🐱 Bátor kiscica",little_car:"🚗 Kis autó kalandja",bedtime_garden:"🌷 Esti kert",magic_forest:"🌲 Varázserdő",ocean_deep:"🌊 Óceán mélye",dino_island:"🦕 Dinoszigetek",superhero_school:"🦸 Szuperhős suli",fairy_garden:"🧚 Tündérkert",blocky_builder:"🧱 Kockavilág Építők",space_explorers:"🚀 Űrkutatók",detective_mystery:"🔍 Nyomozó rejtély",robot_inventors:"🤖 Robotfeltalálók",pirate_treasure:"🏴 Kalózkincs-kereső",blocky_survivors:"🧱 Kockavilág Túlélők",future_racers:"🏎️ Jövő versenyzői",secret_mission:"🕵️ Titkos küldetés",legend_hunters:"🗺️ Legendák nyomában",animal_rescue:"🐾 Állatmentő Csapat",sports_champion:"🏆 Sportbajnok Kaland",magic_school:"🪄 Varázsiskola",music_dance:"🎵 Zene és Tánc Sztori",esports_arena:"🎮 Játékvilág Kaland"},
-  es:{friendly_animals:"🐰 Amigos Animales",brave_kitten:"🐱 Gatito Valiente",little_car:"🚗 Aventura del Cochecito",bedtime_garden:"🌷 Jardín de la Noche",magic_forest:"🌲 Bosque Mágico",ocean_deep:"🌊 Océano Profundo",dino_island:"🦕 Isla de los Dinosaurios",superhero_school:"🦸 Escuela de Superhéroes",fairy_garden:"🧚 Jardín de Hadas",blocky_builder:"🧱 Mundo de Bloques",space_explorers:"🚀 Exploradores Espaciales",detective_mystery:"🔍 Misterio Detective",robot_inventors:"🤖 Inventores Robóticos",pirate_treasure:"🏴 Tesoro Pirata",blocky_survivors:"🧱 Supervivientes del Mundo de Bloques",future_racers:"🏎️ Corredores del Futuro",secret_mission:"🕵️ Misión Secreta",legend_hunters:"🗺️ Cazadores de Leyendas",animal_rescue:"🐾 Equipo de Rescate Animal",sports_champion:"🏆 Aventura del Campeón Deportivo",magic_school:"🪄 Escuela de Magia",music_dance:"🎵 Historia de Música y Baile",esports_arena:"🎮 Aventura en el Mundo del Juego"},
-  de:{friendly_animals:"🐰 Tierfreunde",brave_kitten:"🐱 Mutiges Kätzchen",little_car:"🚗 Abenteuer des kleinen Autos",bedtime_garden:"🌷 Abendgarten",magic_forest:"🌲 Zauberwald",ocean_deep:"🌊 Tiefsee",dino_island:"🦕 Dino-Insel",superhero_school:"🦸 Superhelden-Schule",fairy_garden:"🧚 Feengarten",blocky_builder:"🧱 Klötzchenwelt-Baumeister",space_explorers:"🚀 Weltraumforscher",detective_mystery:"🔍 Detektiv-Rätsel",robot_inventors:"🤖 Roboter-Erfinder",pirate_treasure:"🏴 Piratenschatz",blocky_survivors:"🧱 Klötzchenwelt-Überlebende",future_racers:"🏎️ Rennfahrer der Zukunft",secret_mission:"🕵️ Geheimmission",legend_hunters:"🗺️ Legendenjäger",animal_rescue:"🐾 Tierrettungs-Team",sports_champion:"🏆 Sportchampion-Abenteuer",magic_school:"🪄 Zauberschule",music_dance:"🎵 Musik- und Tanzgeschichte",esports_arena:"🎮 Spielwelt-Abenteuer"},
-  fr:{friendly_animals:"🐰 Amis Animaux",brave_kitten:"🐱 Petit Chat Courageux",little_car:"🚗 Aventure de la Petite Voiture",bedtime_garden:"🌷 Jardin du Soir",magic_forest:"🌲 Forêt Magique",ocean_deep:"🌊 Océan Profond",dino_island:"🦕 Île des Dinosaures",superhero_school:"🦸 École des Super-héros",fairy_garden:"🧚 Jardin des Fées",blocky_builder:"🧱 Monde des Blocs",space_explorers:"🚀 Explorateurs de l'Espace",detective_mystery:"🔍 Mystère du Détective",robot_inventors:"🤖 Inventeurs de Robots",pirate_treasure:"🏴 Chasse au Trésor Pirate",blocky_survivors:"🧱 Survivants du Monde des Blocs",future_racers:"🏎️ Pilotes du Futur",secret_mission:"🕵️ Mission Secrète",legend_hunters:"🗺️ Chasseurs de Légendes",animal_rescue:"🐾 Équipe de Secours Animalier",sports_champion:"🏆 Aventure du Champion Sportif",magic_school:"🪄 École de Magie",music_dance:"🎵 Histoire de Musique et Danse",esports_arena:"🎮 Aventure du Monde des Jeux"}
+  en:{friendly_animals:"🐰 Friendly Animal Friends",brave_kitten:"🐱 Brave Little Kitten",little_car:"🚗 Little Car Adventure",bedtime_garden:"🌷 Bedtime Garden",baby_dino:"🦖 Baby Dino Friend",teddy_picnic:"🧸 Teddy Bear Picnic",puppy_park:"🐶 Puppy at the Park",magic_forest:"🌲 Magic Forest",ocean_deep:"🌊 Deep Ocean",dino_island:"🦕 Dino Island",superhero_school:"🦸 Superhero School",fairy_garden:"🧚 Fairy Garden",animal_rescue:"🐾 Animal Rescue Team",princess_castle:"👑 Princess Castle",dragon_friend:"🐉 Friendly Dragon",jungle_safari:"🦁 Jungle Safari",circus_wonder:"🎪 Circus Wonder",blocky_builder:"🧱 Blocky Builder World",space_explorers:"🚀 Space Explorers",detective_mystery:"🔍 Detective Mystery",robot_inventors:"🤖 Robot Inventors",pirate_treasure:"🏴 Pirate Treasure Hunt",sports_champion:"🏆 Sports Champion Adventure",magic_school:"🪄 Magic School",ninja_academy:"🥋 Ninja Academy",unicorn_valley:"🦄 Unicorn Valley",knight_quest:"⚔️ Knight's Quest",monster_truck_rally:"🚙 Monster Truck Rally",blocky_survivors:"🧱 Blocky World Survivors",future_racers:"🏎️ Future Racers",secret_mission:"🕵️ Secret Mission",legend_hunters:"🗺️ Legend Hunters",music_dance:"🎵 Music & Dance Story",esports_arena:"🎮 Game Arena Adventure",fashion_designer:"👗 Fashion Designer Studio",wilderness_survival:"🏕️ Wilderness Survival",science_genius:"🔬 Science Fair Genius",battle_knights:"🛡️ Knight Battle Arena"},
+  hu:{friendly_animals:"🐰 Barátságos állatkert",brave_kitten:"🐱 Bátor kiscica",little_car:"🚗 Kis autó kalandja",bedtime_garden:"🌷 Esti kert",baby_dino:"🦖 Kis dínó barát",teddy_picnic:"🧸 Maci piknik",puppy_park:"🐶 Kiskutya a parkban",magic_forest:"🌲 Varázserdő",ocean_deep:"🌊 Óceán mélye",dino_island:"🦕 Dinoszigetek",superhero_school:"🦸 Szuperhős suli",fairy_garden:"🧚 Tündérkert",animal_rescue:"🐾 Állatmentő Csapat",princess_castle:"👑 Hercegnő kastélya",dragon_friend:"🐉 Barátságos sárkány",jungle_safari:"🦁 Dzsungel szafari",circus_wonder:"🎪 Csodás cirkusz",blocky_builder:"🧱 Kockavilág Építők",space_explorers:"🚀 Űrkutatók",detective_mystery:"🔍 Nyomozó rejtély",robot_inventors:"🤖 Robotfeltalálók",pirate_treasure:"🏴 Kalózkincs-kereső",sports_champion:"🏆 Sportbajnok Kaland",magic_school:"🪄 Varázsiskola",ninja_academy:"🥋 Nindzsa akadémia",unicorn_valley:"🦄 Egyszarvú-völgy",knight_quest:"⚔️ Lovagi küldetés",monster_truck_rally:"🚙 Szörnyautó verseny",blocky_survivors:"🧱 Kockavilág Túlélők",future_racers:"🏎️ Jövő versenyzői",secret_mission:"🕵️ Titkos küldetés",legend_hunters:"🗺️ Legendák nyomában",music_dance:"🎵 Zene és Tánc Sztori",esports_arena:"🎮 Játékvilág Kaland",fashion_designer:"👗 Divattervező stúdió",wilderness_survival:"🏕️ Vadonbeli túlélés",science_genius:"🔬 Tudós zseni",battle_knights:"🛡️ Lovagi csata aréna"},
+  es:{friendly_animals:"🐰 Amigos Animales",brave_kitten:"🐱 Gatito Valiente",little_car:"🚗 Aventura del Cochecito",bedtime_garden:"🌷 Jardín de la Noche",baby_dino:"🦖 Bebé Dinosaurio Amigo",teddy_picnic:"🧸 Picnic de Osito",puppy_park:"🐶 Cachorro en el Parque",magic_forest:"🌲 Bosque Mágico",ocean_deep:"🌊 Océano Profundo",dino_island:"🦕 Isla de los Dinosaurios",superhero_school:"🦸 Escuela de Superhéroes",fairy_garden:"🧚 Jardín de Hadas",animal_rescue:"🐾 Equipo de Rescate Animal",princess_castle:"👑 Castillo de la Princesa",dragon_friend:"🐉 Dragón Amigable",jungle_safari:"🦁 Safari en la Selva",circus_wonder:"🎪 Circo Maravilloso",blocky_builder:"🧱 Mundo de Bloques",space_explorers:"🚀 Exploradores Espaciales",detective_mystery:"🔍 Misterio Detective",robot_inventors:"🤖 Inventores Robóticos",pirate_treasure:"🏴 Tesoro Pirata",sports_champion:"🏆 Aventura del Campeón Deportivo",magic_school:"🪄 Escuela de Magia",ninja_academy:"🥋 Academia Ninja",unicorn_valley:"🦄 Valle del Unicornio",knight_quest:"⚔️ Misión del Caballero",monster_truck_rally:"🚙 Carrera de Camiones Monstruo",blocky_survivors:"🧱 Supervivientes del Mundo de Bloques",future_racers:"🏎️ Corredores del Futuro",secret_mission:"🕵️ Misión Secreta",legend_hunters:"🗺️ Cazadores de Leyendas",music_dance:"🎵 Historia de Música y Baile",esports_arena:"🎮 Aventura en el Mundo del Juego",fashion_designer:"👗 Estudio de Diseño de Moda",wilderness_survival:"🏕️ Supervivencia en la Naturaleza",science_genius:"🔬 Genio de la Feria de Ciencias",battle_knights:"🛡️ Arena de Batalla de Caballeros"},
+  de:{friendly_animals:"🐰 Tierfreunde",brave_kitten:"🐱 Mutiges Kätzchen",little_car:"🚗 Abenteuer des kleinen Autos",bedtime_garden:"🌷 Abendgarten",baby_dino:"🦖 Baby-Dino-Freund",teddy_picnic:"🧸 Teddybär-Picknick",puppy_park:"🐶 Welpe im Park",magic_forest:"🌲 Zauberwald",ocean_deep:"🌊 Tiefsee",dino_island:"🦕 Dino-Insel",superhero_school:"🦸 Superhelden-Schule",fairy_garden:"🧚 Feengarten",animal_rescue:"🐾 Tierrettungs-Team",princess_castle:"👑 Prinzessinnenschloss",dragon_friend:"🐉 Freundlicher Drache",jungle_safari:"🦁 Dschungel-Safari",circus_wonder:"🎪 Zauberhafter Zirkus",blocky_builder:"🧱 Klötzchenwelt-Baumeister",space_explorers:"🚀 Weltraumforscher",detective_mystery:"🔍 Detektiv-Rätsel",robot_inventors:"🤖 Roboter-Erfinder",pirate_treasure:"🏴 Piratenschatz",sports_champion:"🏆 Sportchampion-Abenteuer",magic_school:"🪄 Zauberschule",ninja_academy:"🥋 Ninja-Akademie",unicorn_valley:"🦄 Einhorn-Tal",knight_quest:"⚔️ Ritterquest",monster_truck_rally:"🚙 Monstertruck-Rennen",blocky_survivors:"🧱 Klötzchenwelt-Überlebende",future_racers:"🏎️ Rennfahrer der Zukunft",secret_mission:"🕵️ Geheimmission",legend_hunters:"🗺️ Legendenjäger",music_dance:"🎵 Musik- und Tanzgeschichte",esports_arena:"🎮 Spielwelt-Abenteuer",fashion_designer:"👗 Modedesign-Studio",wilderness_survival:"🏕️ Überleben in der Wildnis",science_genius:"🔬 Wissenschaftsmesse-Genie",battle_knights:"🛡️ Ritter-Kampfarena"},
+  fr:{friendly_animals:"🐰 Amis Animaux",brave_kitten:"🐱 Petit Chat Courageux",little_car:"🚗 Aventure de la Petite Voiture",bedtime_garden:"🌷 Jardin du Soir",baby_dino:"🦖 Bébé Dinosaure Ami",teddy_picnic:"🧸 Pique-nique en Peluche",puppy_park:"🐶 Chiot au Parc",magic_forest:"🌲 Forêt Magique",ocean_deep:"🌊 Océan Profond",dino_island:"🦕 Île des Dinosaures",superhero_school:"🦸 École des Super-héros",fairy_garden:"🧚 Jardin des Fées",animal_rescue:"🐾 Équipe de Secours Animalier",princess_castle:"👑 Château de la Princesse",dragon_friend:"🐉 Dragon Amical",jungle_safari:"🦁 Safari dans la Jungle",circus_wonder:"🎪 Cirque Merveilleux",blocky_builder:"🧱 Monde des Blocs",space_explorers:"🚀 Explorateurs de l'Espace",detective_mystery:"🔍 Mystère du Détective",robot_inventors:"🤖 Inventeurs de Robots",pirate_treasure:"🏴 Chasse au Trésor Pirate",sports_champion:"🏆 Aventure du Champion Sportif",magic_school:"🪄 École de Magie",ninja_academy:"🥋 Académie Ninja",unicorn_valley:"🦄 Vallée des Licornes",knight_quest:"⚔️ Quête du Chevalier",monster_truck_rally:"🚙 Rallye de Camions Monstres",blocky_survivors:"🧱 Survivants du Monde des Blocs",future_racers:"🏎️ Pilotes du Futur",secret_mission:"🕵️ Mission Secrète",legend_hunters:"🗺️ Chasseurs de Légendes",music_dance:"🎵 Histoire de Musique et Danse",esports_arena:"🎮 Aventure du Monde des Jeux",fashion_designer:"👗 Studio de Mode",wilderness_survival:"🏕️ Survie dans la Nature",science_genius:"🔬 Génie de la Foire aux Sciences",battle_knights:"🛡️ Arène des Chevaliers"},
+  it:{friendly_animals:"🐰 Amici Animali",brave_kitten:"🐱 Gattino Coraggioso",little_car:"🚗 Avventura della Macchinina",bedtime_garden:"🌷 Giardino della Buonanotte",baby_dino:"🦖 Cucciolo di Dinosauro",teddy_picnic:"🧸 Picnic dell'Orsacchiotto",puppy_park:"🐶 Cucciolo al Parco",magic_forest:"🌲 Foresta Magica",ocean_deep:"🌊 Oceano Profondo",dino_island:"🦕 Isola dei Dinosauri",superhero_school:"🦸 Scuola dei Supereroi",fairy_garden:"🧚 Giardino delle Fate",animal_rescue:"🐾 Squadra di Soccorso Animali",princess_castle:"👑 Castello della Principessa",dragon_friend:"🐉 Drago Amichevole",jungle_safari:"🦁 Safari nella Giungla",circus_wonder:"🎪 Circo Meraviglioso",blocky_builder:"🧱 Mondo dei Blocchi Costruttori",space_explorers:"🚀 Esploratori dello Spazio",detective_mystery:"🔍 Mistero del Detective",robot_inventors:"🤖 Inventori di Robot",pirate_treasure:"🏴 Caccia al Tesoro dei Pirati",sports_champion:"🏆 Avventura del Campione Sportivo",magic_school:"🪄 Scuola di Magia",ninja_academy:"🥋 Accademia Ninja",unicorn_valley:"🦄 Valle degli Unicorni",knight_quest:"⚔️ Missione del Cavaliere",monster_truck_rally:"🚙 Rally di Camion Mostro",blocky_survivors:"🧱 Sopravvissuti del Mondo dei Blocchi",future_racers:"🏎️ Piloti del Futuro",secret_mission:"🕵️ Missione Segreta",legend_hunters:"🗺️ Cacciatori di Leggende",music_dance:"🎵 Storia di Musica e Danza",esports_arena:"🎮 Avventura nell'Arena di Gioco",fashion_designer:"👗 Studio di Moda",wilderness_survival:"🏕️ Sopravvivenza nella Natura",science_genius:"🔬 Genio della Fiera della Scienza",battle_knights:"🛡️ Arena di Battaglia dei Cavalieri"},
+  pt:{friendly_animals:"🐰 Amigos Animais",brave_kitten:"🐱 Gatinho Corajoso",little_car:"🚗 Aventura do Carrinho",bedtime_garden:"🌷 Jardim da Noite",baby_dino:"🦖 Bebê Dinossauro Amigo",teddy_picnic:"🧸 Piquenique do Ursinho",puppy_park:"🐶 Cachorrinho no Parque",magic_forest:"🌲 Floresta Mágica",ocean_deep:"🌊 Oceano Profundo",dino_island:"🦕 Ilha dos Dinossauros",superhero_school:"🦸 Escola de Super-heróis",fairy_garden:"🧚 Jardim das Fadas",animal_rescue:"🐾 Equipe de Resgate Animal",princess_castle:"👑 Castelo da Princesa",dragon_friend:"🐉 Dragão Amigável",jungle_safari:"🦁 Safári na Selva",circus_wonder:"🎪 Circo Maravilhoso",blocky_builder:"🧱 Mundo dos Blocos Construtores",space_explorers:"🚀 Exploradores do Espaço",detective_mystery:"🔍 Mistério do Detetive",robot_inventors:"🤖 Inventores de Robôs",pirate_treasure:"🏴 Caça ao Tesouro Pirata",sports_champion:"🏆 Aventura do Campeão Esportivo",magic_school:"🪄 Escola de Magia",ninja_academy:"🥋 Academia Ninja",unicorn_valley:"🦄 Vale do Unicórnio",knight_quest:"⚔️ Missão do Cavaleiro",monster_truck_rally:"🚙 Corrida de Caminhões Monstro",blocky_survivors:"🧱 Sobreviventes do Mundo dos Blocos",future_racers:"🏎️ Corredores do Futuro",secret_mission:"🕵️ Missão Secreta",legend_hunters:"🗺️ Caçadores de Lendas",music_dance:"🎵 História de Música e Dança",esports_arena:"🎮 Aventura na Arena de Jogos",fashion_designer:"👗 Estúdio de Moda",wilderness_survival:"🏕️ Sobrevivência na Natureza",science_genius:"🔬 Gênio da Feira de Ciências",battle_knights:"🛡️ Arena de Batalha dos Cavaleiros"}
 };
 
 /* ================= I18N ================= */
@@ -341,12 +355,12 @@ const I18N = {
     lblPhoto:"Photo of your child (for the storybook-style character)", photoUploadBtn:"Choose photo",
     photoHint:"The photo is only used to draw a stylized cartoon character — it appears redrawn in a storybook art style, not as a real photo, in the header of every page.",
     lblWorld:"Which world should the story be set in?", lblTheme:"What should the story be about?",
-    themes:[["courage","💪 courage — facing a fear"],["friendship","🤝 friendship — a new friend"],["kindness","💛 kindness — helping someone"]],
-    lblPageCount:"Number of pages", pageCountHint:"Suggested for this age, but feel free to change it (4–30 pages).",
+    themes:[["courage","💪 courage — facing a fear"],["friendship","🤝 friendship — a new friend"],["kindness","💛 kindness — helping someone"],["teamwork","🤗 teamwork — working together"],["honesty","🌟 honesty — telling the truth"],["perseverance","🔥 perseverance — never giving up"]],
+    lblPageCount:"Number of pages", pageCountHint:"Suggested for this age, but feel free to change it (4–12 pages).",
     generateBtn:"Create the story ✨", hint:"Every story is unique and freshly generated — about 15–20 seconds.",
     loadingLines:["The storyteller's lantern is glowing…","The pencil is dancing across the page…","Turning the photo into a storybook hero…","Just a few more moments…"],
     artFlag:"AI illustration slot — plug in your Seedream API here",
-    listenBtn:"🔊 Listen", prevBtn:"← Previous", nextBtn:"Next →", nextBtnEnd:"The End ✓",
+    listenBtn:"🔊 Listen", listenBtnPause:"⏸ Pause", prevBtn:"← Previous", nextBtn:"Next →", nextBtnEnd:"The End ✓",
     ctaText:"Loved the story? Get it as a printable or audiobook edition and keep it forever.", ctaBtn:"Buy this story — $6.99",
     ctaAlert:"This is a demo — in the live app this would open App Store / Google Play checkout.",
     restartLink:"Create a new story", errorNoName:"Enter your child's name to create the story.",
@@ -375,12 +389,12 @@ const I18N = {
     lblPhoto:"Gyermeked fotója (a mesekönyv-stílusú karakterhez)", photoUploadBtn:"Fotó kiválasztása",
     photoHint:"A fotó csak egy stilizált rajzfigura elkészítéséhez kell — a mesekönyv rajzstílusában, újrarajzolva jelenik meg minden oldal fejlécében, nem valódi fotóként.",
     lblWorld:"Milyen világban játszódjon a mese?", lblTheme:"Miről szóljon a történet?",
-    themes:[["courage","💪 bátorság — legyőzi a félelmét"],["friendship","🤝 barátság — új barátra talál"],["kindness","💛 kedvesség — segít valakin"]],
-    lblPageCount:"Oldalak száma", pageCountHint:"Ez a korosztálynak ajánlott érték, de bátran módosítsd (4–30 oldal).",
+    themes:[["courage","💪 bátorság — legyőzi a félelmét"],["friendship","🤝 barátság — új barátra talál"],["kindness","💛 kedvesség — segít valakin"],["teamwork","🤗 csapatmunka — együtt dolgoznak"],["honesty","🌟 őszinteség — igazat mond"],["perseverance","🔥 kitartás — sosem adja fel"]],
+    lblPageCount:"Oldalak száma", pageCountHint:"Ez a korosztálynak ajánlott érték, de bátran módosítsd (4–12 oldal).",
     generateBtn:"Mese elkészítése ✨", hint:"A mese egyedi, minden alkalommal újragenerálódik — kb. 15–20 másodperc.",
     loadingLines:["A mesemondó lámpás most gyullad ki…","A ceruza a papíron táncol…","A fotóból mesehős készül…","Már csak néhány pillanat…"],
     artFlag:"AI illusztráció helye — Seedream API csatlakoztatható ide",
-    listenBtn:"🔊 Felolvasás", prevBtn:"← Előző", nextBtn:"Következő →", nextBtnEnd:"Vége ✓",
+    listenBtn:"🔊 Felolvasás", listenBtnPause:"⏸ Szünet", prevBtn:"← Előző", nextBtn:"Következő →", nextBtnEnd:"Vége ✓",
     ctaText:"Tetszett a mese? Kérd el nyomtatható vagy hangoskönyv verzióban, és mentsd el örökre.", ctaBtn:"Mese megvásárlása — $6.99",
     ctaAlert:"Ez egy demó — az éles appban itt indulna az App Store / Google Play fizetés.",
     restartLink:"Új mese készítése", errorNoName:"Add meg a gyermek nevét a mese elkészítéséhez.",
@@ -409,12 +423,12 @@ const I18N = {
     lblPhoto:"Foto de tu hijo/a (para el personaje estilo cuento)", photoUploadBtn:"Elegir foto",
     photoHint:"La foto solo se usa para dibujar un personaje de dibujos animados estilizado — aparece redibujada en estilo de cuento, no como foto real, en la cabecera de cada página.",
     lblWorld:"¿En qué mundo transcurre la historia?", lblTheme:"¿De qué trata la historia?",
-    themes:[["courage","💪 valentía — vence un miedo"],["friendship","🤝 amistad — un nuevo amigo"],["kindness","💛 bondad — ayuda a alguien"]],
-    lblPageCount:"Número de páginas", pageCountHint:"Sugerido para esta edad, pero puedes cambiarlo (4–30 páginas).",
+    themes:[["courage","💪 valentía — vence un miedo"],["friendship","🤝 amistad — un nuevo amigo"],["kindness","💛 bondad — ayuda a alguien"],["teamwork","🤗 trabajo en equipo — colaborar con otros"],["honesty","🌟 honestidad — decir la verdad"],["perseverance","🔥 perseverancia — nunca rendirse"]],
+    lblPageCount:"Número de páginas", pageCountHint:"Sugerido para esta edad, pero puedes cambiarlo (4–12 páginas).",
     generateBtn:"Crear el cuento ✨", hint:"Cada cuento es único y recién generado — unos 15–20 segundos.",
     loadingLines:["La lámpara del narrador se enciende…","El lápiz baila sobre el papel…","Convirtiendo la foto en un héroe de cuento…","Solo unos segundos más…"],
     artFlag:"Espacio para ilustración IA — conecta aquí tu API de Seedream",
-    listenBtn:"🔊 Escuchar", prevBtn:"← Anterior", nextBtn:"Siguiente →", nextBtnEnd:"Fin ✓",
+    listenBtn:"🔊 Escuchar", listenBtnPause:"⏸ Pausa", prevBtn:"← Anterior", nextBtn:"Siguiente →", nextBtnEnd:"Fin ✓",
     ctaText:"¿Te gustó el cuento? Consíguelo en edición imprimible o audiolibro y guárdalo para siempre.", ctaBtn:"Comprar este cuento — $6.99",
     ctaAlert:"Esto es una demo — en la app real esto abriría el pago de App Store / Google Play.",
     restartLink:"Crear un nuevo cuento", errorNoName:"Escribe el nombre del niño o niña para crear el cuento.",
@@ -443,12 +457,12 @@ const I18N = {
     lblPhoto:"Foto deines Kindes (für die Buchcharakter-Zeichnung)", photoUploadBtn:"Foto wählen",
     photoHint:"Das Foto dient nur dazu, eine stilisierte Zeichentrickfigur zu erstellen — sie erscheint im Bilderbuch-Stil neu gezeichnet, nicht als echtes Foto, oben auf jeder Seite.",
     lblWorld:"In welcher Welt soll die Geschichte spielen?", lblTheme:"Worum soll es gehen?",
-    themes:[["courage","💪 Mut — eine Angst überwinden"],["friendship","🤝 Freundschaft — ein neuer Freund"],["kindness","💛 Freundlichkeit — jemandem helfen"]],
-    lblPageCount:"Seitenanzahl", pageCountHint:"Für dieses Alter vorgeschlagen, du kannst es aber ändern (4–30 Seiten).",
+    themes:[["courage","💪 Mut — eine Angst überwinden"],["friendship","🤝 Freundschaft — ein neuer Freund"],["kindness","💛 Freundlichkeit — jemandem helfen"],["teamwork","🤗 Teamarbeit — zusammenarbeiten"],["honesty","🌟 Ehrlichkeit — die Wahrheit sagen"],["perseverance","🔥 Ausdauer — niemals aufgeben"]],
+    lblPageCount:"Seitenanzahl", pageCountHint:"Für dieses Alter vorgeschlagen, du kannst es aber ändern (4–12 Seiten).",
     generateBtn:"Geschichte erstellen ✨", hint:"Jede Geschichte ist einzigartig und wird neu erstellt — etwa 15–20 Sekunden.",
     loadingLines:["Die Laterne des Geschichtenerzählers leuchtet auf…","Der Stift tanzt über das Papier…","Das Foto wird zum Buchhelden…","Nur noch einen Moment…"],
     artFlag:"KI-Illustration hier einfügen — Seedream API andocken",
-    listenBtn:"🔊 Vorlesen", prevBtn:"← Zurück", nextBtn:"Weiter →", nextBtnEnd:"Ende ✓",
+    listenBtn:"🔊 Vorlesen", listenBtnPause:"⏸ Pause", prevBtn:"← Zurück", nextBtn:"Weiter →", nextBtnEnd:"Ende ✓",
     ctaText:"Hat die Geschichte gefallen? Als Druck- oder Hörbuchversion sichern und für immer behalten.", ctaBtn:"Geschichte kaufen — $6.99",
     ctaAlert:"Dies ist eine Demo — in der echten App würde hier der App Store / Google Play Kauf starten.",
     restartLink:"Neue Geschichte erstellen", errorNoName:"Gib den Namen des Kindes ein, um die Geschichte zu erstellen.",
@@ -477,12 +491,12 @@ const I18N = {
     lblPhoto:"Photo de ton enfant (pour le personnage façon conte)", photoUploadBtn:"Choisir une photo",
     photoHint:"La photo sert uniquement à dessiner un personnage stylisé — elle apparaît redessinée façon livre illustré, pas comme une vraie photo, en en-tête de chaque page.",
     lblWorld:"Dans quel univers se déroule l'histoire ?", lblTheme:"De quoi parle l'histoire ?",
-    themes:[["courage","💪 courage — surmonter une peur"],["friendship","🤝 amitié — un nouvel ami"],["kindness","💛 gentillesse — aider quelqu'un"]],
-    lblPageCount:"Nombre de pages", pageCountHint:"Suggéré pour cet âge, mais libre à toi de changer (4–30 pages).",
+    themes:[["courage","💪 courage — surmonter une peur"],["friendship","🤝 amitié — un nouvel ami"],["kindness","💛 gentillesse — aider quelqu'un"],["teamwork","🤗 esprit d'équipe — travailler ensemble"],["honesty","🌟 honnêteté — dire la vérité"],["perseverance","🔥 persévérance — ne jamais abandonner"]],
+    lblPageCount:"Nombre de pages", pageCountHint:"Suggéré pour cet âge, mais libre à toi de changer (4–12 pages).",
     generateBtn:"Créer l'histoire ✨", hint:"Chaque histoire est unique et générée à la volée — environ 15–20 secondes.",
     loadingLines:["La lanterne du conteur s'allume…","Le crayon danse sur le papier…","La photo devient un héros de conte…","Encore quelques instants…"],
     artFlag:"Emplacement d'illustration IA — connecte ton API Seedream ici",
-    listenBtn:"🔊 Écouter", prevBtn:"← Précédent", nextBtn:"Suivant →", nextBtnEnd:"Fin ✓",
+    listenBtn:"🔊 Écouter", listenBtnPause:"⏸ Pause", prevBtn:"← Précédent", nextBtn:"Suivant →", nextBtnEnd:"Fin ✓",
     ctaText:"L'histoire t'a plu ? Obtiens-la en version imprimable ou audio et garde-la pour toujours.", ctaBtn:"Acheter cette histoire — $6.99",
     ctaAlert:"Ceci est une démo — dans l'application réelle, cela ouvrirait le paiement App Store / Google Play.",
     restartLink:"Créer une nouvelle histoire", errorNoName:"Indique le prénom de l'enfant pour créer l'histoire.",
@@ -502,6 +516,74 @@ const I18N = {
     quotaExceededMsg:"Passe à un forfait supérieur pour continuer à créer des histoires.",
     compileBtn:"📖 Compiler le livre d'histoires", compileTitleSuffix:" — Livre d'Histoires",
     demoPlanNote:"(démo — dans l'application réelle, cela ouvrirait le paiement App Store / Google Play)"
+  },
+  it:{ langLabel:"Italiano", ttsTag:"it-IT", promptLang:"Italian",
+    eyebrow:"Racconti di Stelle", brand:"✨ La storia in cui è lui o lei l'eroe",
+    sub:"Inserisci il nome di tuo figlio — l'IA scrive la sua storia in pochi secondi.",
+    lblName:"Nome del bambino/a", placeholderName:"es. Sofia", lblAge:"Età", lblColor:"Colore preferito",
+    colors:["blu","rosa","verde","viola","giallo","rosso"],
+    lblPhoto:"Foto di tuo figlio/a (per il personaggio in stile libro illustrato)", photoUploadBtn:"Scegli foto",
+    photoHint:"La foto serve solo per disegnare un personaggio stilizzato — appare ridisegnata in stile libro illustrato, non come foto reale, nell'intestazione di ogni pagina.",
+    lblWorld:"In quale mondo si svolge la storia?", lblTheme:"Di cosa dovrebbe parlare la storia?",
+    themes:[["courage","💪 coraggio — affrontare una paura"],["friendship","🤝 amicizia — un nuovo amico"],["kindness","💛 gentilezza — aiutare qualcuno"],["teamwork","🤗 lavoro di squadra — collaborare con gli altri"],["honesty","🌟 onestà — dire la verità"],["perseverance","🔥 perseveranza — non arrendersi mai"]],
+    lblPageCount:"Numero di pagine", pageCountHint:"Suggerito per questa età, ma puoi cambiarlo (4–12 pagine).",
+    generateBtn:"Crea la storia ✨", hint:"Ogni storia è unica e generata al momento — circa 15–20 secondi.",
+    loadingLines:["La lanterna del narratore si accende…","La matita danza sulla carta…","La foto diventa un eroe da libro illustrato…","Ancora qualche istante…"],
+    artFlag:"Spazio illustrazione IA — collega qui la tua API Seedream",
+    listenBtn:"🔊 Ascolta", listenBtnPause:"⏸ Pausa", prevBtn:"← Precedente", nextBtn:"Avanti →", nextBtnEnd:"Fine ✓",
+    ctaText:"Ti è piaciuta la storia? Ottienila in edizione stampabile o audiolibro e conservala per sempre.", ctaBtn:"Acquista questa storia — $6.99",
+    ctaAlert:"Questa è una demo — nell'app reale si aprirebbe il pagamento App Store / Google Play.",
+    restartLink:"Crea una nuova storia", errorNoName:"Inserisci il nome del bambino per creare la storia.",
+    consentLabel:"Sono il genitore o tutore legale di questo bambino/a e acconsento a creare una storia personalizzata per lui/lei.", errorNoConsent:"Conferma di essere il genitore o tutore del bambino prima di continuare.",
+    errorGeneric:"Impossibile creare la storia. Riprova tra un momento. (", libraryLabel:"Le tue storie finora",
+    noPhotoAlt:"nessuna foto — verrà usato un eroe generico da libro illustrato",
+    plansTitle:"Piani", planName_free:"Gratis", planName_weekly:"Mensile", planName_monthly:"Mensile", planName_compile:"Libro delle Storie",
+    planDesc_free:"3 storie in totale", planDesc_weekly:"2 storie a settimana, fatturato mensilmente", planDesc_monthly:"20 storie al mese",
+    planDesc_compile:"Acquisto unico — raccogli le tue storie in un libro completo, scegli quali includere, aggiungi le tue foto e poi scaricalo o stampalo",
+    oneTimeLabel:"una tantum", addonOwnedBadge:"Acquistato",
+    compileSetupTitle:"Scegli quali storie includere", compileExtraPhotosLabel:"Aggiungi le tue foto (opzionale)", compileExtraPhotosBtn:"Aggiungi foto",
+    compileConfirmBtn:"Componi il libro delle storie ✨", compileCancelBtn:"Annulla", noStorySelectedError:"Scegli almeno una storia.",
+    downloadBtn:"⬇️ Scarica PDF", printBtn:"🖨️ Stampa",
+    freePriceLabel:"Gratis", perWeek:"/settimana", perMonth:"/mese",
+    currentPlanBadge:"Piano attuale", selectPlanBtn:"Passa a questo",
+    quotaRemaining:"{used} / {quota} storie usate", quotaExceededTitle:"Hai esaurito le storie di questo periodo",
+    quotaExceededMsg:"Passa a un piano più grande per continuare a creare storie.",
+    compileBtn:"📖 Componi il libro delle storie", compileTitleSuffix:" — Libro delle Storie",
+    demoPlanNote:"(demo — nell'app reale si aprirebbe il pagamento App Store / Google Play)"
+  },
+  pt:{ langLabel:"Português", ttsTag:"pt-PT", promptLang:"Portuguese",
+    eyebrow:"Contos Estelares", brand:"✨ A história onde ele ou ela é o herói",
+    sub:"Digite o nome do seu filho — a IA escreve a história dele em segundos.",
+    lblName:"Nome da criança", placeholderName:"ex. Sofia", lblAge:"Idade", lblColor:"Cor favorita",
+    colors:["azul","rosa","verde","roxo","amarelo","vermelho"],
+    lblPhoto:"Foto do seu filho/a (para o personagem estilo livro de histórias)", photoUploadBtn:"Escolher foto",
+    photoHint:"A foto é usada apenas para desenhar um personagem estilizado — aparece redesenhada em estilo de livro ilustrado, não como foto real, no cabeçalho de cada página.",
+    lblWorld:"Em que mundo se passa a história?", lblTheme:"Sobre o que deve ser a história?",
+    themes:[["courage","💪 coragem — enfrentar um medo"],["friendship","🤝 amizade — um novo amigo"],["kindness","💛 bondade — ajudar alguém"],["teamwork","🤗 trabalho em equipa — colaborar com os outros"],["honesty","🌟 honestidade — dizer a verdade"],["perseverance","🔥 perseverança — nunca desistir"]],
+    lblPageCount:"Número de páginas", pageCountHint:"Sugerido para esta idade, mas sinta-se à vontade para mudar (4–12 páginas).",
+    generateBtn:"Criar a história ✨", hint:"Cada história é única e gerada na hora — cerca de 15–20 segundos.",
+    loadingLines:["A lanterna do contador de histórias está a acender…","O lápis dança sobre o papel…","A foto está a tornar-se um herói de livro de histórias…","Só mais alguns instantes…"],
+    artFlag:"Espaço de ilustração IA — conecte aqui a sua API Seedream",
+    listenBtn:"🔊 Ouvir", listenBtnPause:"⏸ Pausa", prevBtn:"← Anterior", nextBtn:"Seguinte →", nextBtnEnd:"Fim ✓",
+    ctaText:"Gostou da história? Obtenha-a em edição para imprimir ou audiolivro e guarde-a para sempre.", ctaBtn:"Comprar esta história — $6.99",
+    ctaAlert:"Isto é uma demonstração — na app real isto abriria o pagamento da App Store / Google Play.",
+    restartLink:"Criar uma nova história", errorNoName:"Digite o nome da criança para criar a história.",
+    consentLabel:"Sou o pai, mãe ou tutor legal desta criança e dou o meu consentimento para criar uma história personalizada para ela.", errorNoConsent:"Confirme que é o pai, mãe ou tutor da criança antes de continuar.",
+    errorGeneric:"Não foi possível criar a história. Tente novamente daqui a pouco. (", libraryLabel:"As suas histórias até agora",
+    noPhotoAlt:"sem foto — será usado um herói genérico de livro de histórias",
+    plansTitle:"Planos", planName_free:"Gratuito", planName_weekly:"Mensal", planName_monthly:"Mensal", planName_compile:"Livro de Histórias",
+    planDesc_free:"3 histórias no total", planDesc_weekly:"2 histórias por semana, faturado mensalmente", planDesc_monthly:"20 histórias por mês",
+    planDesc_compile:"Compra única — reúna as suas histórias num livro completo, escolha quais incluir, adicione as suas próprias fotos e depois descarregue ou imprima",
+    oneTimeLabel:"pagamento único", addonOwnedBadge:"Adquirido",
+    compileSetupTitle:"Escolha quais histórias incluir", compileExtraPhotosLabel:"Adicione as suas próprias fotos (opcional)", compileExtraPhotosBtn:"Adicionar fotos",
+    compileConfirmBtn:"Compilar o livro de histórias ✨", compileCancelBtn:"Cancelar", noStorySelectedError:"Escolha pelo menos uma história.",
+    downloadBtn:"⬇️ Descarregar PDF", printBtn:"🖨️ Imprimir",
+    freePriceLabel:"Gratuito", perWeek:"/semana", perMonth:"/mês",
+    currentPlanBadge:"Plano atual", selectPlanBtn:"Mudar para este",
+    quotaRemaining:"{used} / {quota} histórias usadas", quotaExceededTitle:"Esgotou as histórias deste período",
+    quotaExceededMsg:"Mude para um plano maior para continuar a criar histórias.",
+    compileBtn:"📖 Compilar o livro de histórias", compileTitleSuffix:" — Livro de Histórias",
+    demoPlanNote:"(demonstração — na app real isto abriria o pagamento da App Store / Google Play)"
   }
 };
 // Index-aligned with every language's "colors" array in I18N (blue, pink, green, purple, yellow, red)
@@ -554,11 +636,28 @@ const ILLUSTRATION_API = {
   endpoint: "https://stardust-tales-ai.vercel.app/api/generate-illustration"
 };
 
+// PRICING (2026-09-05): repriced from $4.99/$14.99 to guarantee a positive
+// margin even in the worst case — every quota story generated at the new
+// MAX_PAGE_COUNT (12) with a paid AI illustration on every page.
+// Cost basis per story at 12 pages: 12 x $0.04 (fal.ai FLUX.1 Kontext per
+// image) + ~$0.041 (Claude Sonnet text) = ~$0.52/story.
+// Weekly: ~8.7 stories/month max x $0.52 = ~$4.57 cost. At $7.99, net of
+// Google Play's 15% subscription fee (~$6.79), that's a ~$2.22/mo margin
+// (~33%) even at full usage.
+// Monthly: 20 stories/month max x $0.52 = ~$10.46 cost. At $19.99, net of
+// Google Play's 15% fee (~$16.99), that's a ~$6.53/mo margin (~38%) even
+// at full usage.
+// IMPORTANT: this price is what the UI displays and what the demo-mode
+// fallback uses. The Payment Request API's `total.amount` is ignored by
+// real Google Play Billing — the ACTUAL charge is whatever you configured
+// for the weekly_2stories / monthly_20stories subscription SKUs in Play
+// Console. You must update those SKU prices there to $7.99 / $19.99 to
+// match, or customers will be shown one price and charged another.
 const PLANS = {
   free:    { id:'free',    quota:3,  billingPeriod:'lifetime', price:0 },
   // 2 stories/week, billed monthly — billingPeriod drives the price suffix shown to the user.
-  weekly:  { id:'weekly',  quota:2,  billingPeriod:'month', quotaResetLabel:'week', price:4.99 },
-  monthly: { id:'monthly', quota:20, billingPeriod:'month', price:14.99 }
+  weekly:  { id:'weekly',  quota:2,  billingPeriod:'month', quotaResetLabel:'week', price:7.99 },
+  monthly: { id:'monthly', quota:20, billingPeriod:'month', price:19.99 }
 };
 const PLAN_ORDER = ['free','weekly','monthly'];
 
@@ -568,7 +667,7 @@ const PLAN_ORDER = ['free','weekly','monthly'];
 // above is currently active.
 const STORYBOOK_ADDON = { id:'storybook_addon', price:19.99 };
 
-const LANG_ORDER = ["en","hu","es","de","fr"];
+const LANG_ORDER = ["en","hu","es","de","fr","it","pt"];
 let currentLang = "en";
 function detectLang(){ const nav=(navigator.language||"en").slice(0,2).toLowerCase(); return LANG_ORDER.includes(nav)?nav:"en"; }
 
@@ -578,6 +677,7 @@ let speaking = false;
 let libraryStories = []; // session-only; production build should persist this in the native app's own storage
 let childPhotoDataUrl = null;
 let headerAvatarUrl = null; // resolved once per story (real image if provider enabled, else null -> generic icon)
+let currentStoryId = null; // guards the async header-portrait swap-in below against a race if the user switches stories mid-generation
 let profileAvatars = {}; // childName -> avatarUrl cache, so the same story-book character is reused across stories instead of re-generated every time
 let currentPlan = 'free';
 let storiesUsedInPeriod = 0; // demo-only counter — see note near purchasePlan() about why real enforcement must be server-side
@@ -1024,7 +1124,7 @@ function applyLanguage(){
 
   document.getElementById('generateBtn').textContent = t.generateBtn;
   document.getElementById('hintText').textContent = t.hint;
-  document.getElementById('listenBtn').textContent = t.listenBtn;
+  updateListenBtnLabel();
   document.getElementById('prevBtn').textContent = t.prevBtn;
   document.getElementById('ctaText').textContent = t.ctaText;
   document.getElementById('ctaBtn').textContent = t.ctaBtn;
@@ -1076,7 +1176,7 @@ async function generateStory(){
   const worldKey = getActive('worldChips');
   const themeKey = getActive('themeChips');
   let pageCount = parseInt(document.getElementById('pageCount').value,10) || BAND_DEFAULT_PAGES[band];
-  pageCount = Math.max(4, Math.min(30, pageCount));
+  pageCount = Math.max(4, Math.min(MAX_PAGE_COUNT, pageCount));
 
   const worldLabel = THEME_LABELS[currentLang][worldKey].replace(/^[^\w]*\s/, '');
   const themeLabel = (t.themes.find(s=>s[0]===themeKey) || t.themes[0])[1].replace(/^[^\w]*\s/, '');
@@ -1133,10 +1233,36 @@ The tone should be safe and age-appropriate, ending with ${name} feeling confide
     document.getElementById('headerName').textContent = name;
     applyBookColorTheme(colorKey);
 
-    headerAvatarUrl = profileAvatars[name] || await generateCharacterPortrait(childPhotoDataUrl, band);
-    if(headerAvatarUrl) profileAvatars[name] = headerAvatarUrl;
+    // FIX (2026-09-05): generateCharacterPortrait() used to be awaited right
+    // here, which blocked the ENTIRE story reveal (hiding the loading
+    // screen, opening the book) on a CPU-heavy client-side Canvas filter
+    // (two box-blur passes + edge detection over up to 640x640px, pure JS,
+    // no hardware acceleration) — on a phone that can take a couple of
+    // seconds, which is why the header portrait "appeared too slowly": the
+    // whole book was waiting on it. It's purely decorative, so now the book
+    // opens immediately with a generic icon (or the already-cached portrait
+    // for this child), and the real portrait fades in a moment later
+    // whenever it's actually ready, without holding anything else up.
+    const storyId = 'story-' + Date.now();
     const avatarEl = document.getElementById('headerAvatar');
-    avatarEl.innerHTML = headerAvatarUrl ? '<img src="'+headerAvatarUrl+'" alt="">' : '<span class="ph-icon">✨</span>';
+    if(profileAvatars[name]){
+      headerAvatarUrl = profileAvatars[name];
+      avatarEl.innerHTML = '<img src="'+headerAvatarUrl+'" alt="">';
+    } else {
+      headerAvatarUrl = null;
+      avatarEl.innerHTML = '<span class="ph-icon">✨</span>';
+      generateCharacterPortrait(childPhotoDataUrl, band).then(url=>{
+        if(!url) return;
+        profileAvatars[name] = url;
+        if(currentStoryId === storyId){
+          headerAvatarUrl = url;
+          avatarEl.innerHTML = '<img src="'+url+'" alt="">';
+        }
+        const libEntry = libraryStories.find(s=>s.id===storyId);
+        if(libEntry){ libEntry.avatarUrl = url; renderLibrary(); }
+      });
+    }
+    currentStoryId = storyId;
 
     storiesUsedInPeriod++;
     updateQuotaUI();
@@ -1149,7 +1275,6 @@ The tone should be safe and age-appropriate, ending with ${name} feeling confide
     currentPage = 0;
     renderPage();
 
-    const storyId = 'story-' + Date.now();
     libraryStories.push({ id: storyId, title, name, lang: currentLang, pages: storyPages, avatarUrl: headerAvatarUrl, colorKey });
     renderLibrary();
 
@@ -1188,19 +1313,23 @@ function renderPage(){
     document.getElementById('pageText').textContent = page.text;
     listenBtn.style.visibility = 'visible';
     const m = MOTIFS[page.motif] || MOTIFS.star;
+    // FIX (2026-09-05): the "art-flag" badge was a leftover dev placeholder
+    // ("AI illustration slot — plug in your Seedream API here") from before
+    // the real fal.ai illustration API was wired up. It's stale (wrong
+    // provider name) and confusing to show to real users now that every
+    // page gets an actual generated or composited image — removed.
     if(page.imageUrl){
       illoEl.style.background = 'none';
-      illoEl.innerHTML = '<img src="'+page.imageUrl+'" alt=""><div class="art-flag" id="artFlag"></div>';
+      illoEl.innerHTML = '<img src="'+page.imageUrl+'" alt="">';
     } else {
       illoEl.style.background = m.grad;
-      illoEl.innerHTML = '<div class="motif" id="motif">'+m.emoji+'</div><div class="art-flag" id="artFlag"></div>';
+      illoEl.innerHTML = '<div class="motif" id="motif">'+m.emoji+'</div>';
     }
-    document.getElementById('artFlag').textContent = t.artFlag;
   }
   document.getElementById('prevBtn').disabled = currentPage === 0;
   document.getElementById('nextBtn').textContent = currentPage === storyPages.length-1 ? t.nextBtnEnd : t.nextBtn;
   document.getElementById('ctaCard').style.display = (currentPage === storyPages.length-1 && !isCompiledBook) ? 'block' : 'none';
-  stopListening();
+  cancelSpeechUI(); // stop any leftover audio/UI state from the previous page WITHOUT cancelling auto-read mode — see cancelSpeechUI's own comment
 }
 
 function openCompileSetup(){
@@ -1282,6 +1411,8 @@ function confirmCompile(){
   // this is what was causing the compiled book's color to look "stuck" regardless of the
   // favorite color picked on newer stories.
   const mostRecent = selected[selected.length-1];
+  currentStoryId = null; // no single story is "current" in the compiled view — prevents a pending header-portrait swap from a different story landing here
+  autoReadMode = false; // don't carry a running auto-read session over into the compiled book
   headerAvatarUrl = profileAvatars[mostRecent.name] || mostRecent.avatarUrl;
   applyBookColorTheme(mostRecent.colorKey || 'blue');
 
@@ -1413,6 +1544,8 @@ function renderLibrary(){
     const emoji = MOTIFS[(story.pages[0]||{}).motif]?.emoji || '📖';
     card.innerHTML = '<div class="lib-emoji">'+emoji+'</div><div class="lib-title">'+story.title+'</div>';
     card.onclick = ()=>{
+      currentStoryId = story.id; // so a still-pending header-portrait swap from a newer generation doesn't land on this older story if it resolves after switching back
+      autoReadMode = false; // don't carry a running auto-read session over into a different story
       storyPages = story.pages; currentLang = story.lang; headerAvatarUrl = story.avatarUrl;
       applyLanguage();
       applyBookColorTheme(story.colorKey || 'blue');
@@ -1429,32 +1562,73 @@ function renderLibrary(){
   updateQuotaUI();
 }
 
-function nextPage(){ if(currentPage < storyPages.length-1){ currentPage++; renderPage(); } }
-function prevPage(){ if(currentPage > 0){ currentPage--; renderPage(); } }
+// FIX (2026-09-05): "Felolvasás" now starts a continuous auto-read mode —
+// once started, finishing a page automatically turns to the next one and
+// keeps reading, instead of requiring a fresh tap on every single page.
+// autoReadMode tracks that mode; the same button doubles as the "pause"
+// control the user asked for (its label swaps to Pause/Szünet while active,
+// and tapping it — or the dedicated stopListening() path — cancels
+// everything and turns auto-read back off).
+let autoReadMode = false;
+
+function nextPage(){ if(currentPage < storyPages.length-1){ currentPage++; renderPage(); if(autoReadMode) speakCurrentPage(); } }
+function prevPage(){ if(currentPage > 0){ currentPage--; renderPage(); if(autoReadMode) speakCurrentPage(); } }
+
+function updateListenBtnLabel(){
+  const t = I18N[currentLang];
+  document.getElementById('listenBtn').textContent = (speaking || autoReadMode) ? t.listenBtnPause : t.listenBtn;
+}
 
 function toggleListen(){
-  if(speaking){ stopListening(); return; }
+  if(speaking || autoReadMode){ stopListening(); return; }
+  autoReadMode = true;
+  speakCurrentPage();
+}
+
+function speakCurrentPage(){
   const page = storyPages[currentPage];
-  if(!page || page.divider || page.photoPage) return;
-  if(!('speechSynthesis' in window)){ console.warn('speechSynthesis not supported in this environment'); return; }
+  if(!page || page.divider || page.photoPage){ autoReadMode = false; updateListenBtnLabel(); return; }
+  if(!('speechSynthesis' in window)){ console.warn('speechSynthesis not supported in this environment'); autoReadMode = false; updateListenBtnLabel(); return; }
   const t = I18N[currentLang];
   const utter = new SpeechSynthesisUtterance(page.text);
   utter.lang = t.ttsTag; utter.rate = 0.95;
   const voices = speechSynthesis.getVoices();
   const match = voices.find(v => v.lang === t.ttsTag) || voices.find(v => v.lang && v.lang.startsWith(t.ttsTag.slice(0,2)));
   if(match) utter.voice = match; // falls back to the browser's default voice if none matches — still speaks, just not guaranteed in the right accent
-  utter.onend = ()=>{ speaking=false; document.getElementById('listenBtn').classList.remove('speaking'); };
-  utter.onerror = (e)=>{ console.error('Speech synthesis error:', e.error); speaking=false; document.getElementById('listenBtn').classList.remove('speaking'); };
+  utter.onend = ()=>{
+    speaking = false;
+    document.getElementById('listenBtn').classList.remove('speaking');
+    if(autoReadMode){
+      if(currentPage < storyPages.length-1){
+        currentPage++;
+        renderPage(); // cancels any leftover speech-UI state and redraws the new page; autoReadMode itself is untouched
+        speakCurrentPage(); // keep reading on the page we just turned to
+      } else {
+        autoReadMode = false; // reached the last page — stop cleanly instead of looping
+        updateListenBtnLabel();
+      }
+    } else {
+      updateListenBtnLabel();
+    }
+  };
+  utter.onerror = (e)=>{ console.error('Speech synthesis error:', e.error); speaking=false; autoReadMode=false; document.getElementById('listenBtn').classList.remove('speaking'); updateListenBtnLabel(); };
   speechSynthesis.cancel(); // clear any stuck queue before speaking — some browsers silently drop new utterances otherwise
   speechSynthesis.speak(utter); speaking = true;
   document.getElementById('listenBtn').classList.add('speaking');
+  updateListenBtnLabel();
 }
 // Chrome/Safari load voices asynchronously — call once early so the list is ready by the time someone taps Listen.
 if('speechSynthesis' in window){
   speechSynthesis.getVoices();
   speechSynthesis.onvoiceschanged = ()=> speechSynthesis.getVoices();
 }
-function stopListening(){ if('speechSynthesis' in window){ try{ speechSynthesis.cancel(); }catch(e){} } speaking = false; document.getElementById('listenBtn').classList.remove('speaking'); }
+// Cancels the audio and resets the button's visual state WITHOUT touching
+// autoReadMode — renderPage() calls this on every page change (including
+// the auto-advance turns above) so it can't be the thing that also flips
+// auto-read off, or auto-read would stop itself after the very first page.
+function cancelSpeechUI(){ if('speechSynthesis' in window){ try{ speechSynthesis.cancel(); }catch(e){} } speaking = false; document.getElementById('listenBtn').classList.remove('speaking'); }
+// The user-facing "stop/pause" action: cancels the audio AND turns auto-read off.
+function stopListening(){ autoReadMode = false; cancelSpeechUI(); updateListenBtnLabel(); }
 
 function onCtaClick(){ const current = libraryStories[libraryStories.length-1]; purchaseStory(current ? current.id : 'demo-story'); }
 
