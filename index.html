@@ -129,6 +129,10 @@
   .plan-btn{ width:100%; padding:8px; border-radius:10px; border:1px solid rgba(255,255,255,0.2); background:transparent; color: var(--page-cream); font-family:'Nunito'; font-weight:700; font-size:11.5px; cursor:pointer; }
   .plan-btn.badge{ background: var(--lamp-gold); border-color: var(--lamp-gold); color:#241a10; cursor:default; }
   .plan-btn.pending{ opacity:.55; pointer-events:none; }
+  .plan-sample-btn{ width:100%; padding:6px; margin-bottom:8px; border-radius:10px; border:1px dashed rgba(244,169,76,0.55); background: rgba(244,169,76,0.08); color: var(--lamp-gold-soft); font-family:'Nunito'; font-weight:700; font-size:11px; cursor:pointer; }
+  .plan-sample-btn:hover{ background: rgba(244,169,76,0.18); }
+  .sample-story-btn{ display:block; margin:2px auto 20px; padding:10px 22px; border-radius:999px; border:1.5px solid var(--lamp-gold); background: rgba(244,169,76,0.14); color: var(--lamp-gold-soft); font-family:'Nunito'; font-weight:800; font-size:14px; cursor:pointer; }
+  .sample-story-btn:hover{ background: rgba(244,169,76,0.24); }
   .quota-bar{ display:flex; align-items:center; justify-content:space-between; background:#f3ead9; border-radius:12px; padding:10px 14px; margin-top:14px; font-family:'Nunito'; font-size:12px; font-weight:700; color: var(--ink-soft); }
   .upgrade-card{ background: rgba(255,143,126,.14); border:1px solid rgba(255,143,126,.4); border-radius:16px; padding:16px 18px; text-align:center; margin-top:14px; }
   .upgrade-card h4{ font-family:'Baloo 2'; color:#fff; margin:0 0 6px; font-size:15px; }
@@ -166,7 +170,7 @@
   <div class="eyebrow" id="brandEyebrow"></div>
   <h1 class="brand" id="brandTitle"></h1>
   <p class="brand-sub" id="brandSub"></p>
-  <button class="restart-link" id="sampleStoryBtn" onclick="openDemoStory()" style="margin:-6px 0 18px; color:var(--lamp-gold-soft);"></button>
+  <button class="sample-story-btn" id="sampleStoryBtn" onclick="openDemoStory()"></button>
 
   <div class="plans-label" id="plansLabel"></div>
   <div class="plans-row" id="plansRow"></div>
@@ -338,18 +342,29 @@ const MOTIFS = {
 };
 
 /* ================= SAMPLE / DEMO STORY (2026-09-07) =================
-   A fixed, zero-cost "try before you pay" story: same for every visitor,
-   never calls any AI API (no text generation, no illustration generation),
-   so it costs nothing no matter how many people open it. Every page's
-   illustration is a plain Canvas drawing (gradient + two emoji) generated
-   entirely client-side — the same simple "drawing" of the child appears on
-   every page and in the header, which is intentionally consistent rather
-   than a real per-child photo (there is no real child here to photograph).
-   The 6 pages are written so each page's illustration keyword genuinely
-   matches what happens in that page's text (museum, magnifying glass,
-   paintings, key, badge) — unlike the generic motif-only illustrations the
-   free/paid pipeline used before the 2026-09-07 scene-matching fix below. */
+   A fixed "try before you pay" story: the text and page order are the same
+   for every visitor, and it never calls the story/illustration APIs at
+   request time, so opening it costs nothing no matter how many people view
+   it. The illustrations themselves ARE real AI-generated images (not a
+   placeholder) — they were generated ONCE, with a real child's photo, via
+   the same fal.ai pipeline paying customers get, and the results were
+   committed as static files under assets/demo/ (page1.jpg..page6.jpg, plus
+   header.jpg for the header portrait). Because they're static files, every
+   later visitor loads them for free — the one-time generation cost does not
+   repeat per viewer. The 6 pages are written so each page's illustration
+   genuinely matches what happens in that page's text (museum, magnifying
+   glass, paintings, key, badge) — this is also the reference example for
+   the 2026-09-07 scene-matching fix in api/generate-illustration.js: the
+   real per-story pipeline now aims for this same page-to-scene accuracy.
+   generateDemoIllustration()/DEMO_PAGES_META below are kept only as an
+   offline fallback (drawn entirely client-side) in case a static asset
+   ever fails to load. */
 const DEMO_CHILD_EMOJI = '🧒';
+const DEMO_PAGE_IMAGES = [
+  'assets/demo/page1.jpg','assets/demo/page2.jpg','assets/demo/page3.jpg',
+  'assets/demo/page4.jpg','assets/demo/page5.jpg','assets/demo/page6.jpg'
+];
+const DEMO_HEADER_IMAGE = 'assets/demo/header.jpg';
 const DEMO_PAGES_META = [
   {emoji:'🏛️', c1:'#fff3d6', c2:'#ffe4a8'},
   {emoji:'🦴', c1:'#e2f6e0', c2:'#c6ecc2'},
@@ -463,7 +478,8 @@ const I18N = {
     compileBtn:"📖 Compile the storybook", compileTitleSuffix:"'s Storybook",
     demoPlanNote:"(demo — in the real app this opens App Store / Google Play checkout)",
     sampleStoryBtn:"👀 See a sample story", demoChildName:"Emma",
-    demoCtaText:"This was just a sample story — create your own personalized story for your child!", demoCtaBtn:"Create my own story"
+    demoCtaText:"This was just a sample story — create your own personalized story for your child!", demoCtaBtn:"Create my own story",
+    planSampleLink:"👀 See a sample story first"
   },
   hu:{ langLabel:"Magyar", ttsTag:"hu-HU", promptLang:"Hungarian",
     eyebrow:"Csillagpor Mesék", brand:"✨ A mese, amiben Ő a hős",
@@ -499,7 +515,8 @@ const I18N = {
     compileBtn:"📖 Meséskönyv összeállítása", compileTitleSuffix:" Meséskönyve",
     demoPlanNote:"(demó — az éles appban itt indulna az App Store / Google Play fizetés)",
     sampleStoryBtn:"👀 Nézd meg a példa mesét", demoChildName:"Zsófi",
-    demoCtaText:"Ez csak egy példa mese volt — készíts saját, személyre szabott mesét a gyerekednek!", demoCtaBtn:"Saját mese készítése"
+    demoCtaText:"Ez csak egy példa mese volt — készíts saját, személyre szabott mesét a gyerekednek!", demoCtaBtn:"Saját mese készítése",
+    planSampleLink:"👀 Nézd meg előbb a példa mesét"
   },
   es:{ langLabel:"Español", ttsTag:"es-ES", promptLang:"Spanish",
     eyebrow:"Cuentos Estelares", brand:"✨ El cuento donde ella o él es el héroe",
@@ -535,7 +552,8 @@ const I18N = {
     compileBtn:"📖 Compilar el libro de cuentos", compileTitleSuffix:" — Libro de Cuentos",
     demoPlanNote:"(demo — en la app real esto abriría el pago de App Store / Google Play)",
     sampleStoryBtn:"👀 Ver un cuento de ejemplo", demoChildName:"Sofía",
-    demoCtaText:"Esto fue solo un cuento de ejemplo — ¡crea tu propio cuento personalizado para tu hijo/a!", demoCtaBtn:"Crear mi propio cuento"
+    demoCtaText:"Esto fue solo un cuento de ejemplo — ¡crea tu propio cuento personalizado para tu hijo/a!", demoCtaBtn:"Crear mi propio cuento",
+    planSampleLink:"👀 Ver primero un cuento de ejemplo"
   },
   de:{ langLabel:"Deutsch", ttsTag:"de-DE", promptLang:"German",
     eyebrow:"Sternenstaub-Geschichten", brand:"✨ Die Geschichte, in der sie der Held sind",
@@ -571,7 +589,8 @@ const I18N = {
     compileBtn:"📖 Buch zusammenstellen", compileTitleSuffix:"s Geschichtenbuch",
     demoPlanNote:"(Demo — in der echten App würde hier der App Store / Google Play Kauf starten)",
     sampleStoryBtn:"👀 Beispielgeschichte ansehen", demoChildName:"Mia",
-    demoCtaText:"Das war nur eine Beispielgeschichte — erstelle deine eigene, personalisierte Geschichte für dein Kind!", demoCtaBtn:"Meine eigene Geschichte erstellen"
+    demoCtaText:"Das war nur eine Beispielgeschichte — erstelle deine eigene, personalisierte Geschichte für dein Kind!", demoCtaBtn:"Meine eigene Geschichte erstellen",
+    planSampleLink:"👀 Erst eine Beispielgeschichte ansehen"
   },
   fr:{ langLabel:"Français", ttsTag:"fr-FR", promptLang:"French",
     eyebrow:"Contes d'Étoiles", brand:"✨ L'histoire où il ou elle est le héros",
@@ -607,7 +626,8 @@ const I18N = {
     compileBtn:"📖 Compiler le livre d'histoires", compileTitleSuffix:" — Livre d'Histoires",
     demoPlanNote:"(démo — dans l'application réelle, cela ouvrirait le paiement App Store / Google Play)",
     sampleStoryBtn:"👀 Voir une histoire d'exemple", demoChildName:"Léa",
-    demoCtaText:"Ceci n'était qu'une histoire d'exemple — crée ta propre histoire personnalisée pour ton enfant !", demoCtaBtn:"Créer ma propre histoire"
+    demoCtaText:"Ceci n'était qu'une histoire d'exemple — crée ta propre histoire personnalisée pour ton enfant !", demoCtaBtn:"Créer ma propre histoire",
+    planSampleLink:"👀 Voir d'abord une histoire d'exemple"
   },
   it:{ langLabel:"Italiano", ttsTag:"it-IT", promptLang:"Italian",
     eyebrow:"Racconti di Stelle", brand:"✨ La storia in cui è lui o lei l'eroe",
@@ -643,7 +663,8 @@ const I18N = {
     compileBtn:"📖 Componi il libro delle storie", compileTitleSuffix:" — Libro delle Storie",
     demoPlanNote:"(demo — nell'app reale si aprirebbe il pagamento App Store / Google Play)",
     sampleStoryBtn:"👀 Guarda una storia di esempio", demoChildName:"Sofia",
-    demoCtaText:"Questa era solo una storia di esempio — crea la tua storia personalizzata per il tuo bambino/a!", demoCtaBtn:"Crea la mia storia"
+    demoCtaText:"Questa era solo una storia di esempio — crea la tua storia personalizzata per il tuo bambino/a!", demoCtaBtn:"Crea la mia storia",
+    planSampleLink:"👀 Guarda prima una storia di esempio"
   },
   pt:{ langLabel:"Português", ttsTag:"pt-PT", promptLang:"Portuguese",
     eyebrow:"Contos Estelares", brand:"✨ A história onde ele ou ela é o herói",
@@ -679,7 +700,8 @@ const I18N = {
     compileBtn:"📖 Compilar o livro de histórias", compileTitleSuffix:" — Livro de Histórias",
     demoPlanNote:"(demonstração — na app real isto abriria o pagamento da App Store / Google Play)",
     sampleStoryBtn:"👀 Ver uma história de exemplo", demoChildName:"Sofia",
-    demoCtaText:"Esta foi apenas uma história de exemplo — crie a sua própria história personalizada para o seu filho/a!", demoCtaBtn:"Criar a minha história"
+    demoCtaText:"Esta foi apenas uma história de exemplo — crie a sua própria história personalizada para o seu filho/a!", demoCtaBtn:"Criar a minha história",
+    planSampleLink:"👀 Ver primeiro uma história de exemplo"
   }
 };
 // Index-aligned with every language's "colors" array in I18N (blue, pink, green, purple, yellow, red)
@@ -1444,7 +1466,11 @@ function renderPage(){
     // page gets an actual generated or composited image — removed.
     if(page.imageUrl){
       illoEl.style.background = 'none';
-      illoEl.innerHTML = '<img src="'+page.imageUrl+'" alt="">';
+      // Demo pages point at a static assets/demo/pageN.jpg file; if that
+      // ever fails to load (asset renamed/missing), fall back to the
+      // zero-cost Canvas drawing instead of a broken-image icon.
+      const demoFallback = isDemoMode ? ' onerror="this.onerror=null;this.src=generateDemoIllustration(DEMO_PAGES_META['+currentPage+']||DEMO_PAGES_META[0]);"' : '';
+      illoEl.innerHTML = '<img src="'+page.imageUrl+'" alt=""'+demoFallback+'>';
     } else {
       illoEl.style.background = m.grad;
       illoEl.innerHTML = '<div class="motif" id="motif">'+m.emoji+'</div>';
@@ -1609,10 +1635,16 @@ function renderPlans(){
     const btnHtml = id===currentPlan
       ? '<button class="plan-btn badge">'+t.currentPlanBadge+'</button>'
       : '<button class="plan-btn" onclick="purchasePlan(\''+id+'\', this)">'+t.selectPlanBtn+'</button>';
+    // Every real story plan (free/weekly/monthly) shows a link to the same
+    // fixed sample story, so a parent can see exactly what they'd get —
+    // AI-illustrated pages + read-aloud — before choosing or paying for a
+    // plan. Placed above the purchase button so it's seen first.
+    const sampleHtml = '<button class="plan-sample-btn" onclick="openDemoStory()">'+t.planSampleLink+'</button>';
     card.innerHTML =
       '<div class="plan-name">'+t['planName_'+id]+'</div>'+
       '<div class="plan-price">'+priceHtml+'</div>'+
       '<div class="plan-desc">'+t['planDesc_'+id]+'</div>'+
+      sampleHtml+
       btnHtml;
     row.appendChild(card);
   });
@@ -1806,6 +1838,14 @@ function generateDemoIllustration(meta){
   }catch(e){ return null; }
 }
 
+/* Fallback if assets/demo/header.jpg ever fails to load — swaps the
+   header image for the generic child icon instead of a broken-image box. */
+function demoAvatarFallback(imgEl){
+  if(imgEl && imgEl.parentElement){
+    imgEl.parentElement.innerHTML = '<span class="ph-icon">'+DEMO_CHILD_EMOJI+'</span>';
+  }
+}
+
 /* Opens the fixed, same-for-everyone sample story so parents can try
    listening/paging/illustrations before paying — see the big comment above
    DEMO_STORY_TEXT for why this never calls any AI API. */
@@ -1814,12 +1854,12 @@ function openDemoStory(){
   const demo = DEMO_STORY_TEXT[currentLang] || DEMO_STORY_TEXT.en;
   storyPages = demo.pages.map((text, i) => ({
     text,
-    imageUrl: generateDemoIllustration(DEMO_PAGES_META[i] || DEMO_PAGES_META[0])
+    imageUrl: DEMO_PAGE_IMAGES[i] || generateDemoIllustration(DEMO_PAGES_META[i] || DEMO_PAGES_META[0])
   }));
   document.getElementById('bookTitle').textContent = demo.title;
   document.getElementById('headerName').textContent = t.demoChildName;
-  headerAvatarUrl = null;
-  document.getElementById('headerAvatar').innerHTML = '<span class="ph-icon">'+DEMO_CHILD_EMOJI+'</span>';
+  headerAvatarUrl = DEMO_HEADER_IMAGE;
+  document.getElementById('headerAvatar').innerHTML = '<img src="'+DEMO_HEADER_IMAGE+'" alt="" onerror="demoAvatarFallback(this)">';
   applyBookColorTheme('purple');
   isDemoMode = true;
   isCompiledBook = false;
