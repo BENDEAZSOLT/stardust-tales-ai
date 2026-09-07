@@ -166,6 +166,7 @@
   <div class="eyebrow" id="brandEyebrow"></div>
   <h1 class="brand" id="brandTitle"></h1>
   <p class="brand-sub" id="brandSub"></p>
+  <button class="restart-link" id="sampleStoryBtn" onclick="openDemoStory()" style="margin:-6px 0 18px; color:var(--lamp-gold-soft);"></button>
 
   <div class="plans-label" id="plansLabel"></div>
   <div class="plans-row" id="plansRow"></div>
@@ -335,6 +336,87 @@ const MOTIFS = {
   trophy:{emoji:'🏆',grad:'linear-gradient(135deg,#fff4d0,#ffe49a)'}, wand:{emoji:'🪄',grad:'linear-gradient(135deg,#efe0ff,#dcc4ff)'},
   music:{emoji:'🎵',grad:'linear-gradient(135deg,#ffe0f0,#ffc2e3)'}, arena:{emoji:'🎮',grad:'linear-gradient(135deg,#dcefff,#b8ddff)'}
 };
+
+/* ================= SAMPLE / DEMO STORY (2026-09-07) =================
+   A fixed, zero-cost "try before you pay" story: same for every visitor,
+   never calls any AI API (no text generation, no illustration generation),
+   so it costs nothing no matter how many people open it. Every page's
+   illustration is a plain Canvas drawing (gradient + two emoji) generated
+   entirely client-side — the same simple "drawing" of the child appears on
+   every page and in the header, which is intentionally consistent rather
+   than a real per-child photo (there is no real child here to photograph).
+   The 6 pages are written so each page's illustration keyword genuinely
+   matches what happens in that page's text (museum, magnifying glass,
+   paintings, key, badge) — unlike the generic motif-only illustrations the
+   free/paid pipeline used before the 2026-09-07 scene-matching fix below. */
+const DEMO_CHILD_EMOJI = '🧒';
+const DEMO_PAGES_META = [
+  {emoji:'🏛️', c1:'#fff3d6', c2:'#ffe4a8'},
+  {emoji:'🦴', c1:'#e2f6e0', c2:'#c6ecc2'},
+  {emoji:'🔍', c1:'#e9e4d8', c2:'#d8cfb8'},
+  {emoji:'🖼️', c1:'#f3e3ff', c2:'#e3c9fb'},
+  {emoji:'🗝️', c1:'#fff8e0', c2:'#ffe9a8'},
+  {emoji:'🏅', c1:'#ffe3e0', c2:'#ffc9c3'}
+];
+const DEMO_STORY_TEXT = {
+  en: { title: "Emma and the Museum Mystery", pages: [
+    "Emma loved mysteries more than anything. One sunny morning, her class visited the Grand City Museum, and she could barely sit still on the bus.",
+    "Inside the dinosaur hall, Emma noticed something odd: the huge dinosaur's name tag was missing, and there were tiny muddy footprints leading away from it.",
+    "She borrowed a magnifying glass from the museum guide and knelt down to study the footprints closely. They led straight toward a dusty old hallway.",
+    "Emma followed the footprints past rows of old paintings, her heart beating fast. Behind one crooked painting, she spotted a tiny golden key.",
+    "The key fit perfectly into a small wooden cabinet Emma had never noticed before. Inside was the dinosaur's missing name tag — and a note!",
+    "The note explained that the museum's cat had knocked the tag down chasing a moth. Everyone laughed with relief, and the museum director gave Emma a special junior detective badge."
+  ]},
+  hu: { title: "Zsófi és a múzeumi rejtély", pages: [
+    "Zsófi mindennél jobban szerette a rejtélyeket. Egy napsütéses reggelen az osztálya a Nagyvárosi Múzeumba látogatott, és alig bírt megülni a buszon.",
+    "A dinoszauruszteremben Zsófi valami furcsát vett észre: az óriási dinoszaurusz névtáblája hiányzott, és apró, sáros lábnyomok vezettek el mellőle.",
+    "Kölcsönkért egy nagyítót az idegenvezetőtől, és letérdelt, hogy alaposan megvizsgálja a lábnyomokat. Azok egyenesen egy poros, régi folyosóra vezettek.",
+    "Zsófi követte a nyomokat a régi festmények sora mellett, gyorsan dobogó szívvel. Az egyik ferdén lógó festmény mögött apró, arany kulcsot pillantott meg.",
+    "A kulcs pontosan illett egy kis fa szekrénykébe, amit Zsófi eddig sosem vett észre. Belül ott volt a dinoszaurusz hiányzó névtáblája — és egy üzenet!",
+    "Az üzenetből kiderült, hogy a múzeum macskája verte le a táblát, miközben egy molylepkét kergetett. Mindenki megkönnyebbülve nevetett, a múzeumigazgató pedig egy különleges kis nyomozó jelvényt adott Zsófinak."
+  ]},
+  es: { title: "Sofía y el misterio del museo", pages: [
+    "A Sofía le encantaban los misterios más que nada. Una mañana soleada, su clase visitó el Gran Museo de la Ciudad, y apenas podía quedarse quieta en el autobús.",
+    "Dentro de la sala de dinosaurios, Sofía notó algo raro: faltaba la placa con el nombre del enorme dinosaurio, y había pequeñas huellas de barro que se alejaban de allí.",
+    "Pidió prestada una lupa a la guía del museo y se arrodilló para estudiar las huellas de cerca. Llevaban directo a un antiguo pasillo polvoriento.",
+    "Sofía siguió las huellas pasando filas de cuadros antiguos, con el corazón latiendo rápido. Detrás de un cuadro torcido, vio una pequeña llave dorada.",
+    "La llave encajaba perfectamente en un pequeño armario de madera que Sofía nunca había notado. ¡Dentro estaba la placa perdida del dinosaurio — y una nota!",
+    "La nota explicaba que el gato del museo había tirado la placa persiguiendo una polilla. Todos rieron aliviados, y el director del museo le dio a Sofía una insignia especial de detective junior."
+  ]},
+  de: { title: "Mia und das Museumsrätsel", pages: [
+    "Mia liebte Rätsel mehr als alles andere. An einem sonnigen Morgen besuchte ihre Klasse das Große Stadtmuseum, und sie konnte im Bus kaum stillsitzen.",
+    "Im Dinosauriersaal bemerkte Mia etwas Merkwürdiges: Das Namensschild des riesigen Dinosauriers fehlte, und kleine schlammige Fußspuren führten davon weg.",
+    "Sie lieh sich eine Lupe von der Museumsführerin und kniete sich hin, um die Spuren genau zu untersuchen. Sie führten direkt zu einem verstaubten alten Flur.",
+    "Mia folgte den Spuren an alten Gemälden vorbei, ihr Herz klopfte schnell. Hinter einem schiefen Gemälde entdeckte sie einen winzigen goldenen Schlüssel.",
+    "Der Schlüssel passte genau in einen kleinen Holzschrank, den Mia noch nie bemerkt hatte. Darin lag das fehlende Namensschild des Dinosauriers — und ein Zettel!",
+    "Auf dem Zettel stand, dass die Katze des Museums das Schild beim Jagen einer Motte heruntergestoßen hatte. Alle lachten erleichtert, und der Museumsdirektor überreichte Mia eine besondere Junior-Detektiv-Marke."
+  ]},
+  fr: { title: "Léa et le mystère du musée", pages: [
+    "Léa adorait les mystères plus que tout. Un matin ensoleillé, sa classe a visité le Grand Musée de la Ville, et elle avait du mal à tenir en place dans le bus.",
+    "Dans la salle des dinosaures, Léa a remarqué quelque chose d'étrange : l'étiquette du nom de l'énorme dinosaure avait disparu, et de petites traces de pas boueuses s'en éloignaient.",
+    "Elle a emprunté une loupe à la guide du musée et s'est agenouillée pour examiner les traces de près. Elles menaient tout droit vers un vieux couloir poussiéreux.",
+    "Léa a suivi les traces le long de vieux tableaux, le cœur battant vite. Derrière un tableau de travers, elle a repéré une minuscule clé dorée.",
+    "La clé s'emboîtait parfaitement dans une petite armoire en bois que Léa n'avait jamais remarquée. À l'intérieur se trouvait l'étiquette manquante du dinosaure — et un mot !",
+    "Le mot expliquait que le chat du musée avait fait tomber l'étiquette en poursuivant un papillon de nuit. Tout le monde a ri, soulagé, et le directeur du musée a remis à Léa un badge spécial de détective junior."
+  ]},
+  it: { title: "Sofia e il mistero del museo", pages: [
+    "A Sofia piacevano i misteri più di ogni altra cosa. Una mattina di sole, la sua classe visitò il Grande Museo della Città, e lei riusciva a malapena a stare ferma sull'autobus.",
+    "Nella sala dei dinosauri, Sofia notò qualcosa di strano: mancava il cartellino con il nome dell'enorme dinosauro, e c'erano piccole impronte fangose che si allontanavano da lì.",
+    "Prese in prestito una lente d'ingrandimento dalla guida del museo e si inginocchiò per esaminare da vicino le impronte. Portavano dritte verso un vecchio corridoio polveroso.",
+    "Sofia seguì le impronte oltre file di antichi dipinti, con il cuore che batteva forte. Dietro un quadro storto, notò una piccola chiave dorata.",
+    "La chiave si adattava perfettamente a un piccolo armadietto di legno che Sofia non aveva mai notato. Dentro c'era il cartellino mancante del dinosauro — e un biglietto!",
+    "Il biglietto spiegava che il gatto del museo aveva fatto cadere il cartellino inseguendo una falena. Tutti risero sollevati, e il direttore del museo diede a Sofia un distintivo speciale da giovane detective."
+  ]},
+  pt: { title: "Sofia e o mistério do museu", pages: [
+    "A Sofia adorava mistérios mais do que tudo. Numa manhã de sol, a sua turma visitou o Grande Museu da Cidade, e ela mal conseguia ficar quieta no autocarro.",
+    "Na sala dos dinossauros, a Sofia notou algo estranho: faltava a etiqueta com o nome do enorme dinossauro, e havia pequenas pegadas de lama que se afastavam dali.",
+    "Pediu emprestada uma lupa ao guia do museu e ajoelhou-se para examinar as pegadas de perto. Levavam direto a um velho corredor empoeirado.",
+    "A Sofia seguiu as pegadas ao longo de fileiras de quadros antigos, com o coração a bater rápido. Atrás de um quadro torto, avistou uma pequena chave dourada.",
+    "A chave encaixava perfeitamente num pequeno armário de madeira que a Sofia nunca tinha reparado. Lá dentro estava a etiqueta perdida do dinossauro — e um bilhete!",
+    "O bilhete explicava que o gato do museu tinha derrubado a etiqueta a perseguir uma traça. Todos riram aliviados, e o diretor do museu deu à Sofia um distintivo especial de detetive júnior."
+  ]}
+};
+
 const THEME_LABELS = {
   en:{friendly_animals:"🐰 Friendly Animal Friends",brave_kitten:"🐱 Brave Little Kitten",little_car:"🚗 Little Car Adventure",bedtime_garden:"🌷 Bedtime Garden",baby_dino:"🦖 Baby Dino Friend",teddy_picnic:"🧸 Teddy Bear Picnic",puppy_park:"🐶 Puppy at the Park",magic_forest:"🌲 Magic Forest",ocean_deep:"🌊 Deep Ocean",dino_island:"🦕 Dino Island",superhero_school:"🦸 Superhero School",fairy_garden:"🧚 Fairy Garden",animal_rescue:"🐾 Animal Rescue Team",princess_castle:"👑 Princess Castle",dragon_friend:"🐉 Friendly Dragon",jungle_safari:"🦁 Jungle Safari",circus_wonder:"🎪 Circus Wonder",blocky_builder:"🧱 Blocky Builder World",space_explorers:"🚀 Space Explorers",detective_mystery:"🔍 Detective Mystery",robot_inventors:"🤖 Robot Inventors",pirate_treasure:"🏴 Pirate Treasure Hunt",sports_champion:"🏆 Sports Champion Adventure",magic_school:"🪄 Magic School",ninja_academy:"🥋 Ninja Academy",unicorn_valley:"🦄 Unicorn Valley",knight_quest:"⚔️ Knight's Quest",monster_truck_rally:"🚙 Monster Truck Rally",blocky_survivors:"🧱 Blocky World Survivors",future_racers:"🏎️ Future Racers",secret_mission:"🕵️ Secret Mission",legend_hunters:"🗺️ Legend Hunters",music_dance:"🎵 Music & Dance Story",esports_arena:"🎮 Game Arena Adventure",fashion_designer:"👗 Fashion Designer Studio",wilderness_survival:"🏕️ Wilderness Survival",science_genius:"🔬 Science Fair Genius",battle_knights:"🛡️ Knight Battle Arena"},
   hu:{friendly_animals:"🐰 Barátságos állatkert",brave_kitten:"🐱 Bátor kiscica",little_car:"🚗 Kis autó kalandja",bedtime_garden:"🌷 Esti kert",baby_dino:"🦖 Kis dínó barát",teddy_picnic:"🧸 Maci piknik",puppy_park:"🐶 Kiskutya a parkban",magic_forest:"🌲 Varázserdő",ocean_deep:"🌊 Óceán mélye",dino_island:"🦕 Dinoszigetek",superhero_school:"🦸 Szuperhős suli",fairy_garden:"🧚 Tündérkert",animal_rescue:"🐾 Állatmentő Csapat",princess_castle:"👑 Hercegnő kastélya",dragon_friend:"🐉 Barátságos sárkány",jungle_safari:"🦁 Dzsungel szafari",circus_wonder:"🎪 Csodás cirkusz",blocky_builder:"🧱 Kockavilág Építők",space_explorers:"🚀 Űrkutatók",detective_mystery:"🔍 Nyomozó rejtély",robot_inventors:"🤖 Robotfeltalálók",pirate_treasure:"🏴 Kalózkincs-kereső",sports_champion:"🏆 Sportbajnok Kaland",magic_school:"🪄 Varázsiskola",ninja_academy:"🥋 Nindzsa akadémia",unicorn_valley:"🦄 Egyszarvú-völgy",knight_quest:"⚔️ Lovagi küldetés",monster_truck_rally:"🚙 Szörnyautó verseny",blocky_survivors:"🧱 Kockavilág Túlélők",future_racers:"🏎️ Jövő versenyzői",secret_mission:"🕵️ Titkos küldetés",legend_hunters:"🗺️ Legendák nyomában",music_dance:"🎵 Zene és Tánc Sztori",esports_arena:"🎮 Játékvilág Kaland",fashion_designer:"👗 Divattervező stúdió",wilderness_survival:"🏕️ Vadonbeli túlélés",science_genius:"🔬 Tudós zseni",battle_knights:"🛡️ Lovagi csata aréna"},
@@ -379,7 +461,9 @@ const I18N = {
     quotaRemaining:"{used} / {quota} stories used", quotaExceededTitle:"You've used up this period's stories",
     quotaExceededMsg:"Switch to a bigger plan to keep creating stories.",
     compileBtn:"📖 Compile the storybook", compileTitleSuffix:"'s Storybook",
-    demoPlanNote:"(demo — in the real app this opens App Store / Google Play checkout)"
+    demoPlanNote:"(demo — in the real app this opens App Store / Google Play checkout)",
+    sampleStoryBtn:"👀 See a sample story", demoChildName:"Emma",
+    demoCtaText:"This was just a sample story — create your own personalized story for your child!", demoCtaBtn:"Create my own story"
   },
   hu:{ langLabel:"Magyar", ttsTag:"hu-HU", promptLang:"Hungarian",
     eyebrow:"Csillagpor Mesék", brand:"✨ A mese, amiben Ő a hős",
@@ -413,7 +497,9 @@ const I18N = {
     quotaRemaining:"{used} / {quota} mese felhasználva", quotaExceededTitle:"Elfogyott ebben az időszakban a mesekvótád",
     quotaExceededMsg:"Válts nagyobb csomagra a folytatáshoz.",
     compileBtn:"📖 Meséskönyv összeállítása", compileTitleSuffix:" Meséskönyve",
-    demoPlanNote:"(demó — az éles appban itt indulna az App Store / Google Play fizetés)"
+    demoPlanNote:"(demó — az éles appban itt indulna az App Store / Google Play fizetés)",
+    sampleStoryBtn:"👀 Nézd meg a példa mesét", demoChildName:"Zsófi",
+    demoCtaText:"Ez csak egy példa mese volt — készíts saját, személyre szabott mesét a gyerekednek!", demoCtaBtn:"Saját mese készítése"
   },
   es:{ langLabel:"Español", ttsTag:"es-ES", promptLang:"Spanish",
     eyebrow:"Cuentos Estelares", brand:"✨ El cuento donde ella o él es el héroe",
@@ -447,7 +533,9 @@ const I18N = {
     quotaRemaining:"{used} / {quota} cuentos usados", quotaExceededTitle:"Has agotado los cuentos de este período",
     quotaExceededMsg:"Cambia a un plan mayor para seguir creando cuentos.",
     compileBtn:"📖 Compilar el libro de cuentos", compileTitleSuffix:" — Libro de Cuentos",
-    demoPlanNote:"(demo — en la app real esto abriría el pago de App Store / Google Play)"
+    demoPlanNote:"(demo — en la app real esto abriría el pago de App Store / Google Play)",
+    sampleStoryBtn:"👀 Ver un cuento de ejemplo", demoChildName:"Sofía",
+    demoCtaText:"Esto fue solo un cuento de ejemplo — ¡crea tu propio cuento personalizado para tu hijo/a!", demoCtaBtn:"Crear mi propio cuento"
   },
   de:{ langLabel:"Deutsch", ttsTag:"de-DE", promptLang:"German",
     eyebrow:"Sternenstaub-Geschichten", brand:"✨ Die Geschichte, in der sie der Held sind",
@@ -481,7 +569,9 @@ const I18N = {
     quotaRemaining:"{used} / {quota} Geschichten genutzt", quotaExceededTitle:"Kontingent für diesen Zeitraum aufgebraucht",
     quotaExceededMsg:"Wechsle zu einem größeren Paket, um weiter Geschichten zu erstellen.",
     compileBtn:"📖 Buch zusammenstellen", compileTitleSuffix:"s Geschichtenbuch",
-    demoPlanNote:"(Demo — in der echten App würde hier der App Store / Google Play Kauf starten)"
+    demoPlanNote:"(Demo — in der echten App würde hier der App Store / Google Play Kauf starten)",
+    sampleStoryBtn:"👀 Beispielgeschichte ansehen", demoChildName:"Mia",
+    demoCtaText:"Das war nur eine Beispielgeschichte — erstelle deine eigene, personalisierte Geschichte für dein Kind!", demoCtaBtn:"Meine eigene Geschichte erstellen"
   },
   fr:{ langLabel:"Français", ttsTag:"fr-FR", promptLang:"French",
     eyebrow:"Contes d'Étoiles", brand:"✨ L'histoire où il ou elle est le héros",
@@ -515,7 +605,9 @@ const I18N = {
     quotaRemaining:"{used} / {quota} histoires utilisées", quotaExceededTitle:"Tu as épuisé tes histoires pour cette période",
     quotaExceededMsg:"Passe à un forfait supérieur pour continuer à créer des histoires.",
     compileBtn:"📖 Compiler le livre d'histoires", compileTitleSuffix:" — Livre d'Histoires",
-    demoPlanNote:"(démo — dans l'application réelle, cela ouvrirait le paiement App Store / Google Play)"
+    demoPlanNote:"(démo — dans l'application réelle, cela ouvrirait le paiement App Store / Google Play)",
+    sampleStoryBtn:"👀 Voir une histoire d'exemple", demoChildName:"Léa",
+    demoCtaText:"Ceci n'était qu'une histoire d'exemple — crée ta propre histoire personnalisée pour ton enfant !", demoCtaBtn:"Créer ma propre histoire"
   },
   it:{ langLabel:"Italiano", ttsTag:"it-IT", promptLang:"Italian",
     eyebrow:"Racconti di Stelle", brand:"✨ La storia in cui è lui o lei l'eroe",
@@ -549,7 +641,9 @@ const I18N = {
     quotaRemaining:"{used} / {quota} storie usate", quotaExceededTitle:"Hai esaurito le storie di questo periodo",
     quotaExceededMsg:"Passa a un piano più grande per continuare a creare storie.",
     compileBtn:"📖 Componi il libro delle storie", compileTitleSuffix:" — Libro delle Storie",
-    demoPlanNote:"(demo — nell'app reale si aprirebbe il pagamento App Store / Google Play)"
+    demoPlanNote:"(demo — nell'app reale si aprirebbe il pagamento App Store / Google Play)",
+    sampleStoryBtn:"👀 Guarda una storia di esempio", demoChildName:"Sofia",
+    demoCtaText:"Questa era solo una storia di esempio — crea la tua storia personalizzata per il tuo bambino/a!", demoCtaBtn:"Crea la mia storia"
   },
   pt:{ langLabel:"Português", ttsTag:"pt-PT", promptLang:"Portuguese",
     eyebrow:"Contos Estelares", brand:"✨ A história onde ele ou ela é o herói",
@@ -583,7 +677,9 @@ const I18N = {
     quotaRemaining:"{used} / {quota} histórias usadas", quotaExceededTitle:"Esgotou as histórias deste período",
     quotaExceededMsg:"Mude para um plano maior para continuar a criar histórias.",
     compileBtn:"📖 Compilar o livro de histórias", compileTitleSuffix:" — Livro de Histórias",
-    demoPlanNote:"(demonstração — na app real isto abriria o pagamento da App Store / Google Play)"
+    demoPlanNote:"(demonstração — na app real isto abriria o pagamento da App Store / Google Play)",
+    sampleStoryBtn:"👀 Ver uma história de exemplo", demoChildName:"Sofia",
+    demoCtaText:"Esta foi apenas uma história de exemplo — crie a sua própria história personalizada para o seu filho/a!", demoCtaBtn:"Criar a minha história"
   }
 };
 // Index-aligned with every language's "colors" array in I18N (blue, pink, green, purple, yellow, red)
@@ -682,6 +778,7 @@ let profileAvatars = {}; // childName -> avatarUrl cache, so the same story-book
 let currentPlan = 'free';
 let storiesUsedInPeriod = 0; // demo-only counter — see note near purchasePlan() about why real enforcement must be server-side
 let hasStorybookAddon = false; // one-time purchase flag, independent of currentPlan's generation quota
+let isDemoMode = false; // true while viewing the fixed, zero-cost sample story — see openDemoStory()
 
 // FIX (2026-09-05): checking "is there a real Google Play Billing bridge"
 // means actually calling getDigitalGoodsService() and awaiting its result.
@@ -878,7 +975,8 @@ async function generateIllustration(page){
         body: JSON.stringify({
           childPhotoDataUrl,
           pageText: page.text || '',
-          motif: page.motif || 'star'
+          motif: page.motif || 'star',
+          scene: page.scene || ''
         })
       });
       if(res.ok){
@@ -1088,6 +1186,7 @@ function applyLanguage(){
   document.getElementById('brandEyebrow').textContent = t.eyebrow;
   document.getElementById('brandTitle').textContent = t.brand;
   document.getElementById('brandSub').textContent = t.sub;
+  document.getElementById('sampleStoryBtn').textContent = t.sampleStoryBtn;
   document.getElementById('lblName').textContent = t.lblName;
   document.getElementById('childName').placeholder = t.placeholderName;
   document.getElementById('lblAge').textContent = t.lblAge;
@@ -1188,10 +1287,18 @@ async function generateStory(){
   document.getElementById('loadingText').textContent = t.loadingLines[0];
   const loadingInterval = setInterval(()=>{ li=(li+1)%t.loadingLines.length; document.getElementById('loadingText').textContent = t.loadingLines[li]; }, 2200);
 
+  // FIX (2026-09-07): the paid per-page illustration used to be built only
+  // from the generic MOTIF_SCENE_HINTS bucket (~25 fixed keywords), so a
+  // page about investigating a museum with a magnifying glass could still
+  // render as a random field or house — the motif enum is too coarse to
+  // capture what's actually happening on that page. Added a per-page
+  // "scene" field: a short, concrete, ENGLISH-only visual description of
+  // that exact page's setting and action, which api/generate-illustration.js
+  // now uses as the primary prompt driver instead of the generic hint.
   const systemPrompt = `You are a children's book author. Return ONLY a JSON object, nothing else — no explanation, no markdown code fence.
 The JSON must look exactly like this:
-{"title": "story title", "pages": [{"text": "1 short paragraph", "motif": "forest|sky|ocean|castle|home|star|friend|animal|car|garden|dino|hero|fairy|blocks|space|mystery|robot|pirate|race|mission|legend|rescue|trophy|wand|music|arena"}]}
-Return an array of exactly ${pageCount} "pages". Reading level: ${readingLevel}. Write everything in ${t.promptLang}. The story must be coherent across all ${pageCount} pages: a beginning (introduction), a middle (the challenge/obstacle, can unfold over several pages for longer stories), and an end (resolution, gentle takeaway). For "motif", always choose the keyword that best matches that page's main visual scene. The story has no other named recurring character besides ${name} — ${name} carries the adventure on their own, no sidekick character should be introduced.`;
+{"title": "story title", "pages": [{"text": "1 short paragraph", "motif": "forest|sky|ocean|castle|home|star|friend|animal|car|garden|dino|hero|fairy|blocks|space|mystery|robot|pirate|race|mission|legend|rescue|trophy|wand|music|arena", "scene": "short visual description in ENGLISH of this exact page's setting and action"}]}
+Return an array of exactly ${pageCount} "pages". Reading level: ${readingLevel}. Write "text" in ${t.promptLang}. The story must be coherent across all ${pageCount} pages: a beginning (introduction), a middle (the challenge/obstacle, can unfold over several pages for longer stories), and an end (resolution, gentle takeaway). For "motif", always choose the keyword that best matches that page's main visual scene. For "scene", always write in ENGLISH regardless of the story's language: a short, concrete, purely visual phrase (6-14 words) describing the SPECIFIC location and physical action happening on that exact page — for example "kneeling in a museum hallway, examining footprints with a magnifying glass" — never generic, never just the motif keyword restated, no character name, no dialogue, no quoted text. The story has no other named recurring character besides ${name} — ${name} carries the adventure on their own, no sidekick character should be introduced.`;
 
   const userPrompt = `Write a ${pageCount}-page personalized bedtime/adventure story appropriate for a ${age}-year-old.
 Main character: ${name}, age ${age}.
@@ -1328,7 +1435,7 @@ function renderPage(){
   } else {
     document.getElementById('pageText').textContent = page.text;
     // Read-aloud is a paid-plan feature — free tier never shows the button.
-    listenBtn.style.visibility = (currentPlan === 'free') ? 'hidden' : 'visible';
+    listenBtn.style.visibility = (currentPlan === 'free' && !isDemoMode) ? 'hidden' : 'visible';
     const m = MOTIFS[page.motif] || MOTIFS.star;
     // FIX (2026-09-05): the "art-flag" badge was a leftover dev placeholder
     // ("AI illustration slot — plug in your Seedream API here") from before
@@ -1345,7 +1452,10 @@ function renderPage(){
   }
   document.getElementById('prevBtn').disabled = currentPage === 0;
   document.getElementById('nextBtn').textContent = currentPage === storyPages.length-1 ? t.nextBtnEnd : t.nextBtn;
-  document.getElementById('ctaCard').style.display = (currentPage === storyPages.length-1 && !isCompiledBook) ? 'block' : 'none';
+  const isLastPage = currentPage === storyPages.length-1;
+  document.getElementById('ctaCard').style.display = (isLastPage && (!isCompiledBook || isDemoMode)) ? 'block' : 'none';
+  document.getElementById('ctaText').textContent = isDemoMode ? t.demoCtaText : t.ctaText;
+  document.getElementById('ctaBtn').textContent = isDemoMode ? t.demoCtaBtn : t.ctaBtn;
   cancelSpeechUI(); // stop any leftover audio/UI state from the previous page WITHOUT cancelling auto-read mode — see cancelSpeechUI's own comment
 }
 
@@ -1597,7 +1707,7 @@ function updateListenBtnLabel(){
 }
 
 function toggleListen(){
-  if(currentPlan === 'free') return; // read-aloud is a paid-plan feature; button is hidden but guard here too
+  if(currentPlan === 'free' && !isDemoMode) return; // read-aloud is a paid-plan feature (except in the sample story); button is hidden but guard here too
   if(speaking || autoReadMode){ stopListening(); return; }
   autoReadMode = true;
   speakCurrentPage();
@@ -1648,12 +1758,83 @@ function cancelSpeechUI(){ if('speechSynthesis' in window){ try{ speechSynthesis
 // The user-facing "stop/pause" action: cancels the audio AND turns auto-read off.
 function stopListening(){ autoReadMode = false; cancelSpeechUI(); updateListenBtnLabel(); }
 
-function onCtaClick(){ const current = libraryStories[libraryStories.length-1]; purchaseStory(current ? current.id : 'demo-story'); }
+function onCtaClick(){
+  if(isDemoMode){ resetApp(); return; }
+  const current = libraryStories[libraryStories.length-1]; purchaseStory(current ? current.id : 'demo-story');
+}
+
+/* Renders one sample-story page's illustration entirely via Canvas — no
+   network call, no API, no cost — using a fixed generic child emoji so the
+   "same drawing" appears on every page, exactly like the real header
+   portrait / per-page illustration would for an actual child. */
+function generateDemoIllustration(meta){
+  try{
+    const w = 640, h = 400;
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    const grad = ctx.createLinearGradient(0, 0, w, h);
+    grad.addColorStop(0, meta.c1);
+    grad.addColorStop(1, meta.c2);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, w, h);
+
+    ctx.save();
+    ctx.globalAlpha = 0.35;
+    ctx.font = '200px "Noto Color Emoji","Apple Color Emoji","Segoe UI Emoji",sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(meta.emoji, w * 0.72, h * 0.38);
+    ctx.restore();
+
+    ctx.save();
+    ctx.globalAlpha = 0.18;
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.ellipse(w * 0.3, h * 0.87, 90, 18, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.25)';
+    ctx.shadowBlur = 14; ctx.shadowOffsetY = 6;
+    ctx.font = '170px "Noto Color Emoji","Apple Color Emoji","Segoe UI Emoji",sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+    ctx.fillText(DEMO_CHILD_EMOJI, w * 0.3, h * 0.92);
+    ctx.restore();
+
+    return canvas.toDataURL('image/jpeg', 0.85);
+  }catch(e){ return null; }
+}
+
+/* Opens the fixed, same-for-everyone sample story so parents can try
+   listening/paging/illustrations before paying — see the big comment above
+   DEMO_STORY_TEXT for why this never calls any AI API. */
+function openDemoStory(){
+  const t = I18N[currentLang];
+  const demo = DEMO_STORY_TEXT[currentLang] || DEMO_STORY_TEXT.en;
+  storyPages = demo.pages.map((text, i) => ({
+    text,
+    imageUrl: generateDemoIllustration(DEMO_PAGES_META[i] || DEMO_PAGES_META[0])
+  }));
+  document.getElementById('bookTitle').textContent = demo.title;
+  document.getElementById('headerName').textContent = t.demoChildName;
+  headerAvatarUrl = null;
+  document.getElementById('headerAvatar').innerHTML = '<span class="ph-icon">'+DEMO_CHILD_EMOJI+'</span>';
+  applyBookColorTheme('purple');
+  isDemoMode = true;
+  isCompiledBook = false;
+  document.getElementById('formCard').style.display = 'none';
+  document.getElementById('bookActions').style.display = 'none';
+  document.getElementById('bookView').classList.add('active');
+  currentPage = 0;
+  renderPage();
+}
 
 function resetApp(){
   stopListening(); storyPages = [];
   resetBookColorTheme();
   isCompiledBook = false;
+  isDemoMode = false;
   document.getElementById('bookActions').style.display = 'none';
   document.getElementById('bookView').classList.remove('active');
   document.getElementById('formCard').style.display = 'block';
