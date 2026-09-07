@@ -58,10 +58,50 @@ export default async function handler(req, res) {
     return;
   }
 
+  // FIX (2026-09-07): illustrations were coming back as random/generic
+  // scenes (a field, a house) that didn't match what was actually happening
+  // on that page — e.g. a page about investigating a museum with a
+  // magnifying glass should show a museum with a magnifying glass, not a
+  // generic backdrop. Root cause: this only ever had the ~25-keyword
+  // MOTIF_SCENE_HINTS bucket to work with, which is too coarse to capture a
+  // specific plot beat. The client (index.html) now also sends `scene`: a
+  // short, concrete, English-only visual description of THIS exact page's
+  // setting and action, written by the story-writing model itself (see the
+  // systemPrompt's "scene" field). Use that as the primary descriptor and
+  // only fall back to the generic motif hint for older/malformed requests
+  // that don't include one.
   const sceneHint = MOTIF_SCENE_HINTS[motif] || 'a warm, magical storybook scene';
   const specificScene = (scene || '').trim().slice(0, 200);
   const effectiveScene = specificScene || sceneHint;
   const storyBit = (pageText || '').slice(0, 400);
+  // FIX (2026-09-05): the previous prompt + default params produced an
+  // edited close-up of the reference photo instead of a real storybook
+  // scene, because FLUX.1 Kontext is an image-EDIT model that stays close
+  // to the input photo's framing/composition unless pushed hard the other
+  // way. Two changes fix this: (1) the prompt now explicitly forbids a
+  // portrait/selfie/headshot crop and asks for a wide, full-body scene shot
+  // from a distance, describing what the character is DOING; (2) a much
+  // higher guidance_scale (how strongly the model follows the text prompt
+  // vs. copying the input image) plus an explicit landscape aspect_ratio
+  // that matches the app's illustration box, instead of inheriting the
+  // reference photo's own (often portrait/selfie) aspect ratio.
+  // FIX (2026-09-05, later same day): real generations were coming back with
+  // garbled fake text/lettering baked into the picture (the model rendering
+  // gibberish words when it decided this looked like a "book page"). Two
+  // causes, both addressed: (1) the earlier prompt literally said "the way
+  // an illustrated page in a picture book looks", which invites a page-with-
+  // text composition; (2) quoting the raw story paragraph in the prompt
+  // reads to the model like text it should render onto the image. Now the
+  // story text is only paraphrased as a hint at a high level (not quoted),
+  // the "book page" framing is gone in favor of plain "single illustration",
+  // and the no-text instruction is repeated more forcefully and specifically
+  // (signs, books, labels included) since one soft mention wasn't enough.
+  // FIX (2026-09-05, later still): generations sometimes showed the child
+  // from behind or in profile (e.g. running away from camera into the
+  // scene), which reads oddly for a "starring in their own story" app.
+  // Added an explicit forward-facing instruction, repeated at the end as a
+  // hard constraint alongside the no-text rule, since a single mention
+  // wasn't reliably followed either.
   const scenePrompt = specificScene
     ? `The character is ${effectiveScene}`
     : (storyBit ? `A moment where the character is: ${effectiveScene}, matching the mood and action of this part of their adventure` : `A moment where the character is ${effectiveScene}`);
