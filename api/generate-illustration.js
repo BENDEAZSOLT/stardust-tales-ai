@@ -50,7 +50,7 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
 
-  const { childPhotoDataUrl, pageText, motif } = req.body || {};
+  const { childPhotoDataUrl, pageText, motif, scene } = req.body || {};
   if (!childPhotoDataUrl) { res.status(400).json({ error: 'Missing childPhotoDataUrl' }); return; }
 
   if (!process.env.FAL_KEY) {
@@ -59,8 +59,12 @@ export default async function handler(req, res) {
   }
 
   const sceneHint = MOTIF_SCENE_HINTS[motif] || 'a warm, magical storybook scene';
+  const specificScene = (scene || '').trim().slice(0, 200);
+  const effectiveScene = specificScene || sceneHint;
   const storyBit = (pageText || '').slice(0, 400);
-  const scenePrompt = storyBit ? `A moment where the character is: ${sceneHint}, matching the mood and action of this part of their adventure` : `A moment where the character is ${sceneHint}`;
+  const scenePrompt = specificScene
+    ? `The character is ${effectiveScene}`
+    : (storyBit ? `A moment where the character is: ${effectiveScene}, matching the mood and action of this part of their adventure` : `A moment where the character is ${effectiveScene}`);
   const prompt = `A single wordless children's book illustration, soft cartoon/watercolor style, full-body wide shot from a distance — NOT a portrait, NOT a headshot, NOT a close-up, NOT a selfie. Show the whole character small within a big, detailed environment, actively doing something, facing toward the viewer/camera with their face clearly visible. ${scenePrompt}. Keep the child's real face, hair and recognizable features so they're clearly the same person, but completely change the framing, pose and background. Friendly, age-appropriate, no scary elements. Absolutely no text, letters, numbers, words, writing, captions, speech bubbles, or symbols anywhere in the image — not on signs, books, clothing, objects, or the background. This is a pure picture with zero written content of any kind. The character must be facing forward or three-quarter view toward the viewer with their face clearly visible at all times — never shown from behind, never with their back turned, never facing away from the camera.`;
 
   try {
