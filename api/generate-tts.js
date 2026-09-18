@@ -1,3 +1,5 @@
+import { verifyPaidPlan } from './story-quota.js';
+
 // Vercel serverless function: /api/generate-tts
 // Reads a story page aloud using Google Cloud Text-to-Speech (Neural2/Wavenet
 // voices), which sounds far more natural than the device's built-in
@@ -40,21 +42,40 @@ const VOICE_MAP = {
 };
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  const origin = String(req.headers.origin || '');
+  const configuredOrigins = String(process.env.STARDUST_ALLOWED_ORIGINS || '')
+    .split(',').map(v => v.trim()).filter(Boolean);
+  const allowedOrigins = new Set(['https://stardust-tales-ai.vercel.app', ...configuredOrigins]);
+  if (origin && allowedOrigins.has(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+  }
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') { res.status(200).end(); return; }
+  if (req.method === 'OPTIONS') { res.status(!origin || allowedOrigins.has(origin) ? 204 : 403).end(); return; }
+  if (origin && !allowedOrigins.has(origin)) { res.status(403).json({ error: 'Origin not allowed.' }); return; }
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
 
-  const { text, ttsTag } = req.body || {};
+  const { text, ttsTag, planId, purchaseToken } = req.body || {};
   if (!text) { res.status(400).json({ error: 'Missing text' }); return; }
+  if (String(text).length > 3000) { res.status(413).json({ error: 'Text is too long.' }); return; }
+  if (!Object.prototype.hasOwnProperty.call(VOICE_MAP, ttsTag)) {
+    res.status(400).json({ error: 'Unsupported voice/language.' });
+    return;
+  }
+
+  const entitled = await verifyPaidPlan(planId, purchaseToken).catch(() => false);
+  if (!entitled) {
+    res.status(403).json({ error: 'Paid narration entitlement could not be verified.' });
+    return;
+  }
 
   if (!process.env.GOOGLE_TTS_API_KEY) {
     res.status(500).json({ error: 'Server is missing GOOGLE_TTS_API_KEY - set it in your Vercel project settings.' });
     return;
   }
 
-  const voice = VOICE_MAP[ttsTag] || VOICE_MAP['en-US'];
+  const voice = VOICE_MAP[ttsTag];
   // Text-to-Speech has a hard 5000-byte input limit per request; a single
   // story page is always far under that, but truncate defensively so a
   // malformed request can't 400 instead of just reading a shorter clip.
