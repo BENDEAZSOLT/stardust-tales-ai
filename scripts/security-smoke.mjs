@@ -22,7 +22,8 @@ assert(!story.includes("Access-Control-Allow-Origin', '*'"), 'story API has no w
 assert(!illustration.includes("Access-Control-Allow-Origin', '*'"), 'illustration API has no wildcard CORS');
 assert(!tts.includes("Access-Control-Allow-Origin', '*'"), 'TTS API has no wildcard CORS');
 
-assert(!story.includes('const { system, prompt'), 'story API does not accept client-supplied system/prompt');
+assert(!/req\.body[^\n]*system|\{\s*system\s*,\s*prompt[^\n]*\}\s*=\s*req\.body/.test(story),
+  'story API does not accept client-supplied system/prompt');
 assert(story.includes('function buildPrompts('), 'story prompts are built server-side');
 assert(story.includes('parseStoryInput('), 'story inputs are validated');
 assert(story.includes('reserveStoryQuota('), 'story generation reserves server-side quota');
