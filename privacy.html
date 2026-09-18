@@ -26,18 +26,18 @@
 <p>The child's first name, age band, favorite color, and chosen story theme are sent to our backend server, which forwards them to Anthropic's Claude API solely to generate the text of the story. No photo, address, school, or other identifying information is included in this request. Anthropic processes this text to return a generated story and does not receive the photo.</p>
 
 <h2>Where data is stored, and for how long</h2>
-<p>Story text you generate is kept only in your browser's active session (and, for signed-in native app use, on your device) so you can revisit past stories. We do not currently operate a server-side database of user profiles, photos, or generated stories. If you close the app/browser and clear its data, your local story history is gone. Purchase and subscription status is managed by our payments provider (RevenueCat) and the app store you purchased through (Apple App Store or Google Play), not by us directly.</p>
+<p>Story text you generate is kept only in your browser's active session (and, for signed-in native app use, on your device) so you can revisit past stories. We do not currently operate a server-side database of user profiles, photos, or generated stories. If you close the app/browser and clear its data, your local story history is gone. Purchase and subscription status is managed by the app store you purchased through. On Android, purchases are verified server-side against Google Play before entitlement is granted. We do not receive or store your payment card details.</p>
 
 <h2>Payments</h2>
-<p>Subscriptions and one-time purchases (such as the printable storybook add-on) are handled entirely by Apple's or Google's in-app purchase systems and by RevenueCat, which manages entitlement status. We do not receive or store your payment card details.</p>
+<p>Subscriptions and one-time purchases (such as the printable storybook add-on) are handled through the relevant app store purchase system. The current Android implementation uses Google Play purchase APIs and server-side purchase verification. We do not receive or store your payment card details.</p>
 
 <h2>Children's privacy (COPPA / GDPR)</h2>
 <p>Stardust Tales is designed to be used <em>by a parent or guardian, together with or on behalf of their child</em> — it is not intended for a child to download or use unsupervised. We do not knowingly collect data directly from children without a parent or guardian initiating and controlling the session. Because the app does not transmit the child's photo anywhere, and only transmits a first name, an age band, and a color/theme preference for the sole purpose of generating that session's story, we believe the amount of personal data leaving the device is minimal. That said, a first name and age combined could be considered personal data under GDPR and COPPA, and we recommend using an initial, nickname, or short story-character name rather than a full legal name when personalizing stories.</p>
 
 <h2>Third-party services we use</h2>
 <p>Anthropic (Claude API) — generates story text server-side, from the limited fields described above, not including any photo.<br>
-RevenueCat — manages subscription/purchase entitlement status.<br>
-Apple App Store / Google Play — process payments and distribute the app.</p>
+Google Play — processes Android purchases and distributes the Android app.<br>
+Apple App Store — may process and distribute a future iOS release once the iOS purchase integration is implemented and submitted.</p>
 <p>We do not use third-party advertising or behavioral-advertising SDKs in this app.</p>
 
 <h2>Your rights / requesting deletion</h2>
