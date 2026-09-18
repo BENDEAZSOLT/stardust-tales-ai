@@ -1,3 +1,5 @@
+import { reserveStoryQuota, releaseStoryQuota } from './story-quota.js';
+
 // Vercel serverless function: /api/generate-story
 // The app (web or native) calls THIS endpoint instead of api.anthropic.com
 // directly. This function holds the real Anthropic API key server-side
@@ -10,8 +12,28 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
 
-const { system, prompt, maxTokens } = req.body || {};
+const { system, prompt, maxTokens, planId, purchaseToken, installId } = req.body || {};
   if (!system || !prompt) { res.status(400).json({ error: 'Missing system or prompt' }); return; }
+
+let quotaReservation = null;
+try {
+  quotaReservation = await reserveStoryQuota({
+    planId: planId || 'free',
+    purchaseToken: purchaseToken || '',
+    installId: installId || ''
+  });
+  if (!quotaReservation.allowed) {
+    res.status(429).json({
+      error: 'Story quota exhausted for this period.',
+      quota: quotaReservation
+    });
+    return;
+  }
+} catch (e) {
+  const status = e.code === 'INVALID_ENTITLEMENT' ? 403 : 503;
+  res.status(status).json({ error: e.message });
+  return;
+}
 
 if (!process.env.ANTHROPIC_API_KEY) {
   res.status(500).json({ error: 'Server is missing ANTHROPIC_API_KEY - set it in your Vercel project settings.' });
@@ -36,11 +58,13 @@ try {
 
   const data = await anthropicRes.json();
   if (!anthropicRes.ok) {
+    await releaseStoryQuota(quotaReservation && quotaReservation.key);
     res.status(anthropicRes.status).json({ error: data.error?.message || 'Anthropic API error', details: data });
     return;
   }
-  res.status(200).json(data);
+  res.status(200).json({ ...data, quota: quotaReservation });
 } catch (e) {
+  try { await releaseStoryQuota(quotaReservation && quotaReservation.key); } catch (_) {}
   res.status(500).json({ error: e.message });
 }
 }
