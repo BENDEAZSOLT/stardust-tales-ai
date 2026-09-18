@@ -1385,9 +1385,14 @@ The tone should be safe and age-appropriate, ending with ${name} feeling confide
       const response = await fetch(STORY_API.endpoint, {
         method:"POST", headers:{ "Content-Type":"application/json" },
         body: JSON.stringify({
-          system: systemPrompt,
-          prompt: userPrompt,
-          maxTokens,
+          name,
+          age: Number(age),
+          color,
+          worldLabel,
+          themeLabel,
+          pageCount,
+          readingLevel,
+          promptLang: t.promptLang,
           planId: quotaIdentity.planId,
           purchaseToken: quotaIdentity.purchaseToken,
           installId: quotaIdentity.installId
