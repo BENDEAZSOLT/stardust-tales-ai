@@ -57,15 +57,29 @@ export async function verifyPaidPlan(planId, purchaseToken) {
 
   const accessToken = await getGoogleAccessToken();
   const url =
-    `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${PACKAGE_NAME}/purchases/subscriptions/${config.sku}/tokens/${encodeURIComponent(purchaseToken)}`;
+    `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${PACKAGE_NAME}/purchases/subscriptionsv2/tokens/${encodeURIComponent(purchaseToken)}`;
 
   const response = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
   const purchase = await response.json();
   if (!response.ok) return false;
 
-  const paid = purchase.paymentState === 1 || purchase.paymentState === 2;
-  const notExpired = Number(purchase.expiryTimeMillis || 0) > Date.now();
-  return paid && notExpired;
+  // Google Play subscriptionsv2 is the current entitlement source of truth.
+  // ACTIVE and IN_GRACE_PERIOD retain access. CANCELED also retains access
+  // until its already-paid expiry time; PAUSED, ON_HOLD, PENDING and EXPIRED
+  // do not.
+  const entitlementStates = new Set([
+    'SUBSCRIPTION_STATE_ACTIVE',
+    'SUBSCRIPTION_STATE_IN_GRACE_PERIOD',
+    'SUBSCRIPTION_STATE_CANCELED'
+  ]);
+  if (!entitlementStates.has(purchase.subscriptionState)) return false;
+
+  const now = Date.now();
+  return Array.isArray(purchase.lineItems) && purchase.lineItems.some(item => {
+    if (item.productId !== config.sku || !item.expiryTime) return false;
+    const expiry = Date.parse(item.expiryTime);
+    return Number.isFinite(expiry) && expiry > now;
+  });
 }
 
 function periodKey(period) {
