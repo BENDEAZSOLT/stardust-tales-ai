@@ -1,0 +1,31 @@
+name: Security Smoke
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - feat/server-side-story-quota
+      - security/harden-ai-api
+
+permissions:
+  contents: read
+
+jobs:
+  security-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check serverless JavaScript syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in api/*.js purchase-bridge.js scripts/security-smoke.mjs; do
+            echo "Checking $file"
+            node --input-type=module --check < "$file"
+          done
+
+      - name: Run security invariants
+        run: node scripts/security-smoke.mjs
