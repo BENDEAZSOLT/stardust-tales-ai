@@ -1038,6 +1038,10 @@ async function generateIllustration(page){
   // the free Canvas composite further down, so the app never breaks.
   if(currentPlan !== 'free' && ILLUSTRATION_API.endpoint && childPhotoDataUrl){
     try{
+      const quotaIdentity = await getServerQuotaIdentity();
+      if(quotaIdentity.planId === 'free' || !quotaIdentity.purchaseToken){
+        return generateIllustrationCanvas(page);
+      }
       const res = await fetch(ILLUSTRATION_API.endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1045,7 +1049,9 @@ async function generateIllustration(page){
           childPhotoDataUrl,
           pageText: page.text || '',
           motif: page.motif || 'star',
-          scene: page.scene || ''
+          scene: page.scene || '',
+          planId: quotaIdentity.planId,
+          purchaseToken: quotaIdentity.purchaseToken
         })
       });
       if(res.ok){
@@ -1832,7 +1838,7 @@ let ttsAudioEl = null;
 let usingCloudAudio = false;
 let ttsRequestToken = 0; // guards against a slow/late fetch response landing after the user already turned the page or stopped
 
-function speakCurrentPage(){
+async function speakCurrentPage(){
   const page = storyPages[currentPage];
   if(!page || page.divider || page.photoPage){ autoReadMode = false; updateListenBtnLabel(); return; }
   const t = I18N[currentLang];
@@ -1844,10 +1850,26 @@ function speakCurrentPage(){
 
   if(!TTS_API.endpoint){ speakCurrentPageWithBrowserTts(myToken); return; }
 
+  if(currentPlan === 'free'){
+    speakCurrentPageWithBrowserTts(myToken);
+    return;
+  }
+
+  const quotaIdentity = await getServerQuotaIdentity();
+  if(quotaIdentity.planId === 'free' || !quotaIdentity.purchaseToken){
+    speakCurrentPageWithBrowserTts(myToken);
+    return;
+  }
+
   fetch(TTS_API.endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text: page.text, ttsTag: t.ttsTag })
+    body: JSON.stringify({
+      text: page.text,
+      ttsTag: t.ttsTag,
+      planId: quotaIdentity.planId,
+      purchaseToken: quotaIdentity.purchaseToken
+    })
   })
     .then(r => r.ok ? r.json() : Promise.reject(new Error('tts endpoint not available')))
     .then(data => {
