@@ -23,6 +23,8 @@ const demo = read('assets/demo/index.html');
 assert(!story.includes("Access-Control-Allow-Origin', '*'"), 'story API has no wildcard CORS');
 assert(!illustration.includes("Access-Control-Allow-Origin', '*'"), 'illustration API has no wildcard CORS');
 assert(!tts.includes("Access-Control-Allow-Origin', '*'"), 'TTS API has no wildcard CORS');
+assert(tts.includes("rawLength > 65_536"), 'TTS API limits request body size');
+assert(quota.includes("String(purchaseToken).length > 4096"), 'central Play entitlement verification bounds purchase token length');
 assert(!verifyPurchase.includes("Access-Control-Allow-Origin', '*'"), 'purchase verification API has no wildcard CORS');
 assert(verifyPurchase.includes('function allowedOrigins()'), 'purchase verification uses origin allowlisting');
 assert(verifyPurchase.includes("rawLength > 65_536"), 'purchase verification limits request size');
