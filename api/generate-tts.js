@@ -56,6 +56,12 @@ export default async function handler(req, res) {
   if (origin && !allowedOrigins.has(origin)) { res.status(403).json({ error: 'Origin not allowed.' }); return; }
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
 
+  const rawLength = Number(req.headers['content-length'] || 0);
+  if (rawLength > 65_536) {
+    res.status(413).json({ error: 'Request body too large.' });
+    return;
+  }
+
   const { text, ttsTag, planId, purchaseToken } = req.body || {};
   if (!text) { res.status(400).json({ error: 'Missing text' }); return; }
   if (String(text).length > 3000) { res.status(413).json({ error: 'Text is too long.' }); return; }
@@ -99,11 +105,11 @@ export default async function handler(req, res) {
 
     const data = await ttsRes.json();
     if (!ttsRes.ok) {
-      res.status(ttsRes.status).json({ error: data.error?.message || 'Cloud Text-to-Speech API error', details: data });
+      res.status(ttsRes.status).json({ error: data.error?.message || 'Cloud Text-to-Speech API error' });
       return;
     }
 
-    if (!data.audioContent) { res.status(502).json({ error: 'Cloud Text-to-Speech returned no audio', details: data }); return; }
+    if (!data.audioContent) { res.status(502).json({ error: 'Cloud Text-to-Speech returned no audio' }); return; }
 
     res.status(200).json({ audioContent: data.audioContent }); // base64 MP3
   } catch (e) {
