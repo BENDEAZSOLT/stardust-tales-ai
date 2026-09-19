@@ -15,12 +15,17 @@ const illustration = read('api/generate-illustration.js');
 const tts = read('api/generate-tts.js');
 const avatar = read('api/generate-avatar.js');
 const quota = read('api/story-quota.js');
+const verifyPurchase = read('api/verify-purchase.js');
 const index = read('index.html');
 const demo = read('assets/demo/index.html');
 
 assert(!story.includes("Access-Control-Allow-Origin', '*'"), 'story API has no wildcard CORS');
 assert(!illustration.includes("Access-Control-Allow-Origin', '*'"), 'illustration API has no wildcard CORS');
 assert(!tts.includes("Access-Control-Allow-Origin', '*'"), 'TTS API has no wildcard CORS');
+assert(!verifyPurchase.includes("Access-Control-Allow-Origin', '*'"), 'purchase verification API has no wildcard CORS');
+assert(verifyPurchase.includes('function allowedOrigins()'), 'purchase verification uses origin allowlisting');
+assert(verifyPurchase.includes("rawLength > 65_536"), 'purchase verification limits request size');
+assert(verifyPurchase.includes('encodeURIComponent(purchaseToken)'), 'purchase token is URL encoded');
 
 assert(!/req\.body[^\n]*system|\{\s*system\s*,\s*prompt[^\n]*\}\s*=\s*req\.body/.test(story),
   'story API does not accept client-supplied system/prompt');
