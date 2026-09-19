@@ -23,6 +23,28 @@ const PACKAGE_NAME = 'app.vercel.stardust_tales_ai.twa';
 const SUBSCRIPTION_SKUS = new Set(['weekly_2stories', 'monthly_20stories']);
 const PRODUCT_SKUS = new Set(['storybook_addon_onetime']);
 
+const DEFAULT_ORIGINS = new Set(['https://stardust-tales-ai.vercel.app']);
+
+function allowedOrigins() {
+  const configured = String(process.env.STARDUST_ALLOWED_ORIGINS || '')
+    .split(',')
+    .map(value => value.trim())
+    .filter(Boolean);
+  return new Set([...DEFAULT_ORIGINS, ...configured]);
+}
+
+function applyCors(req, res) {
+  const origin = String(req.headers.origin || '');
+  const allowed = allowedOrigins();
+  if (origin && allowed.has(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  return !origin || allowed.has(origin);
+}
+
 function base64url(input) {
   return Buffer.from(input).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
@@ -70,15 +92,29 @@ async function getAccessToken() {
 }
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') { res.status(200).end(); return; }
-  if (req.method !== 'POST') { res.status(405).json({ valid: false, error: 'Method not allowed' }); return; }
+  const originAllowed = applyCors(req, res);
+  if (req.method === 'OPTIONS') {
+    res.status(originAllowed ? 204 : 403).end();
+    return;
+  }
+  if (!originAllowed) {
+    res.status(403).json({ valid: false, error: 'Origin not allowed.' });
+    return;
+  }
+  if (req.method !== 'POST') {
+    res.status(405).json({ valid: false, error: 'Method not allowed' });
+    return;
+  }
+
+  const rawLength = Number(req.headers['content-length'] || 0);
+  if (rawLength > 65_536) {
+    res.status(413).json({ valid: false, error: 'Request body too large.' });
+    return;
+  }
 
   const { sku, purchaseToken } = req.body || {};
-  if (!sku || !purchaseToken) {
-    res.status(400).json({ valid: false, error: 'Missing sku or purchaseToken' });
+  if (!sku || !purchaseToken || String(purchaseToken).length > 4096) {
+    res.status(400).json({ valid: false, error: 'Missing or invalid sku/purchaseToken' });
     return;
   }
 
@@ -87,7 +123,7 @@ export default async function handler(req, res) {
     const authHeader = { Authorization: `Bearer ${accessToken}` };
 
     if (SUBSCRIPTION_SKUS.has(sku)) {
-      const base = `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${PACKAGE_NAME}/purchases/subscriptions/${sku}/tokens/${purchaseToken}`;
+      const base = `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${PACKAGE_NAME}/purchases/subscriptions/${encodeURIComponent(sku)}/tokens/${encodeURIComponent(purchaseToken)}`;
       const getRes = await fetch(base, { headers: authHeader });
       const purchase = await getRes.json();
       if (!getRes.ok) {
@@ -109,7 +145,7 @@ export default async function handler(req, res) {
     }
 
     if (PRODUCT_SKUS.has(sku)) {
-      const base = `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${PACKAGE_NAME}/purchases/products/${sku}/tokens/${purchaseToken}`;
+      const base = `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${PACKAGE_NAME}/purchases/products/${encodeURIComponent(sku)}/tokens/${encodeURIComponent(purchaseToken)}`;
       const getRes = await fetch(base, { headers: authHeader });
       const purchase = await getRes.json();
       if (!getRes.ok) {
