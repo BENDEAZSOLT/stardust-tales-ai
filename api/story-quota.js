@@ -51,9 +51,10 @@ async function getGoogleAccessToken() {
   return cachedToken.accessToken;
 }
 
-async function verifyPaidPlan(planId, purchaseToken) {
+export async function verifyPaidPlan(planId, purchaseToken) {
   const config = PLAN_CONFIG[planId];
   if (!config || !config.sku || !purchaseToken) return false;
+  if (String(purchaseToken).length > 4096) return false;
 
   const accessToken = await getGoogleAccessToken();
   const url =
