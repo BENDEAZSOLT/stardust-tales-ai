@@ -123,24 +123,44 @@ export default async function handler(req, res) {
     const authHeader = { Authorization: `Bearer ${accessToken}` };
 
     if (SUBSCRIPTION_SKUS.has(sku)) {
-      const base = `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${PACKAGE_NAME}/purchases/subscriptions/${encodeURIComponent(sku)}/tokens/${encodeURIComponent(purchaseToken)}`;
-      const getRes = await fetch(base, { headers: authHeader });
+      const tokenPath = encodeURIComponent(purchaseToken);
+      const lookupUrl =
+        `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${PACKAGE_NAME}/purchases/subscriptionsv2/tokens/${tokenPath}`;
+      const getRes = await fetch(lookupUrl, { headers: authHeader });
       const purchase = await getRes.json();
       if (!getRes.ok) {
-        res.status(200).json({ valid: false, error: (purchase.error && purchase.error.message) || 'Lookup failed' });
+        res.status(200).json({ valid: false, error: 'Subscription lookup failed.' });
         return;
       }
 
-      // paymentState: 1 = payment received, 2 = free trial. Both count as active.
-      const active = purchase.paymentState === 1 || purchase.paymentState === 2;
-      if (purchase.acknowledgementState === 0) {
-        await fetch(base + ':acknowledge', {
+      const entitlementStates = new Set([
+        'SUBSCRIPTION_STATE_ACTIVE',
+        'SUBSCRIPTION_STATE_IN_GRACE_PERIOD',
+        'SUBSCRIPTION_STATE_CANCELED'
+      ]);
+      const now = Date.now();
+      const active = entitlementStates.has(purchase.subscriptionState) &&
+        Array.isArray(purchase.lineItems) &&
+        purchase.lineItems.some(item => {
+          if (item.productId !== sku || !item.expiryTime) return false;
+          const expiry = Date.parse(item.expiryTime);
+          return Number.isFinite(expiry) && expiry > now;
+        });
+
+      if (active && purchase.acknowledgementState === 'ACKNOWLEDGEMENT_STATE_PENDING') {
+        const acknowledgeUrl =
+          `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${PACKAGE_NAME}/purchases/subscriptions/${encodeURIComponent(sku)}/tokens/${tokenPath}:acknowledge`;
+        const acknowledgeRes = await fetch(acknowledgeUrl, {
           method: 'POST',
           headers: { ...authHeader, 'Content-Type': 'application/json' },
           body: JSON.stringify({})
         });
+        if (!acknowledgeRes.ok) {
+          res.status(502).json({ valid: false, error: 'Subscription acknowledgement failed.' });
+          return;
+        }
       }
-      res.status(200).json({ valid: !!active, entitlement: sku });
+      res.status(200).json({ valid: !!active, entitlement: active ? sku : null });
       return;
     }
 
@@ -149,25 +169,30 @@ export default async function handler(req, res) {
       const getRes = await fetch(base, { headers: authHeader });
       const purchase = await getRes.json();
       if (!getRes.ok) {
-        res.status(200).json({ valid: false, error: (purchase.error && purchase.error.message) || 'Lookup failed' });
+        res.status(200).json({ valid: false, error: 'Product lookup failed.' });
         return;
       }
 
       // purchaseState: 0 = purchased.
       const purchased = purchase.purchaseState === 0;
-      if (purchase.acknowledgementState === 0) {
-        await fetch(base + ':acknowledge', {
+      if (purchased && purchase.acknowledgementState === 0) {
+        const acknowledgeRes = await fetch(base + ':acknowledge', {
           method: 'POST',
           headers: { ...authHeader, 'Content-Type': 'application/json' },
           body: JSON.stringify({})
         });
+        if (!acknowledgeRes.ok) {
+          res.status(502).json({ valid: false, error: 'Product acknowledgement failed.' });
+          return;
+        }
       }
-      res.status(200).json({ valid: !!purchased, entitlement: sku });
+      res.status(200).json({ valid: !!purchased, entitlement: purchased ? sku : null });
       return;
     }
 
     res.status(400).json({ valid: false, error: 'Unknown sku: ' + sku });
   } catch (e) {
-    res.status(500).json({ valid: false, error: e.message });
+    console.error('Purchase verification failed:', e);
+    res.status(500).json({ valid: false, error: 'Purchase verification failed.' });
   }
 }
