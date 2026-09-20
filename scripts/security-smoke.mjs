@@ -29,6 +29,16 @@ assert(!verifyPurchase.includes("Access-Control-Allow-Origin', '*'"), 'purchase 
 assert(verifyPurchase.includes('function allowedOrigins()'), 'purchase verification uses origin allowlisting');
 assert(verifyPurchase.includes("rawLength > 65_536"), 'purchase verification limits request size');
 assert(verifyPurchase.includes('encodeURIComponent(purchaseToken)'), 'purchase token is URL encoded');
+assert(verifyPurchase.includes('/purchases/subscriptionsv2/tokens/'), 'purchase verification uses subscriptionsv2 entitlement lookup');
+assert(verifyPurchase.includes('SUBSCRIPTION_STATE_IN_GRACE_PERIOD'), 'purchase verification accepts documented grace-period entitlement');
+assert(verifyPurchase.includes('item.productId !== sku') && verifyPurchase.includes('expiry > now'),
+  'purchase verification validates subscription SKU and expiry');
+assert(verifyPurchase.includes('Subscription acknowledgement failed.') &&
+  verifyPurchase.includes('Product acknowledgement failed.'),
+  'purchase verification fails closed when acknowledgement fails');
+assert(!verifyPurchase.includes('purchase.error.message') &&
+  !verifyPurchase.includes('error: e.message'),
+  'purchase verification does not expose raw provider or server errors');
 assert(readiness.includes("status: ready ? 'ready' : 'not_ready'"), 'readiness endpoint reports deployment state');
 assert(!readiness.includes('process.env)') && !readiness.includes('...process.env'), 'readiness endpoint does not serialize the environment');
 
