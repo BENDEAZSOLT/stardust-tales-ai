@@ -64,11 +64,13 @@ export default async function handler(req, res) {
   if (rawLength > 8 * 1024 * 1024) { res.status(413).json({ error: 'Request body too large.' }); return; }
 
   const { childPhotoDataUrl, pageText, motif, scene, planId, purchaseToken } = req.body || {};
-  if (!childPhotoDataUrl || !String(childPhotoDataUrl).startsWith('data:image/')) {
-    res.status(400).json({ error: 'Missing or invalid childPhotoDataUrl' });
+  const photoData = String(childPhotoDataUrl || '');
+  const supportedPhoto = /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/=\r\n]+$/.test(photoData);
+  if (!supportedPhoto) {
+    res.status(400).json({ error: 'Photo must be a base64 JPEG, PNG or WebP data URL.' });
     return;
   }
-  if (String(childPhotoDataUrl).length > 7_500_000) {
+  if (photoData.length > 7_500_000) {
     res.status(413).json({ error: 'Photo is too large.' });
     return;
   }
@@ -153,15 +155,21 @@ export default async function handler(req, res) {
 
     const data = await falRes.json();
     if (!falRes.ok) {
-      res.status(falRes.status).json({ error: data.error || data.detail || 'fal.ai API error', details: data });
+      console.error('fal.ai illustration request failed with status', falRes.status);
+      res.status(502).json({ error: 'Illustration provider request failed.' });
       return;
     }
 
     const imageUrl = data.images && data.images[0] && data.images[0].url;
-    if (!imageUrl) { res.status(502).json({ error: 'fal.ai response had no image URL', details: data }); return; }
+    if (!imageUrl) {
+      console.error('fal.ai illustration response did not contain an image URL.');
+      res.status(502).json({ error: 'Illustration provider returned no image.' });
+      return;
+    }
 
     res.status(200).json({ imageUrl });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error('Illustration generation failed:', e);
+    res.status(500).json({ error: 'Illustration generation failed.' });
   }
 }
