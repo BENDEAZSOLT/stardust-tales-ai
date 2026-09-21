@@ -61,5 +61,9 @@ for (const [name, html] of [['index.html', index], ['assets/demo/index.html', de
     name + ' does not send arbitrary prompts to production backend');
 }
 
+assert(illustration.includes("image\\/(?:jpeg|png|webp);base64"), 'illustration endpoint allowlists safe raster MIME types');
+assert(!illustration.includes("details: data"), 'illustration endpoint does not expose raw provider responses');
+assert(!illustration.includes("error: e.message"), 'illustration endpoint does not expose internal exception messages');
+
 if (process.exitCode) process.exit(process.exitCode);
 console.log('Security smoke checks passed.');
