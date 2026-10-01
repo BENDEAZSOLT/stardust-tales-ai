@@ -813,6 +813,42 @@ let storiesUsedInPeriod = 0; // demo-only counter — see note near purchasePlan
 let hasStorybookAddon = false; // one-time purchase flag, independent of currentPlan's generation quota
 let isDemoMode = false; // true while viewing the fixed, zero-cost sample story — see openDemoStory()
 
+let _quotaInstallId = null;
+function getQuotaInstallId(){
+  if(_quotaInstallId) return _quotaInstallId;
+  try{
+    const existing = localStorage.getItem('stardustQuotaInstallId');
+    if(existing){ _quotaInstallId = existing; return existing; }
+    const created = (window.crypto && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : ('install-' + Date.now() + '-' + Math.random().toString(36).slice(2));
+    localStorage.setItem('stardustQuotaInstallId', created);
+    _quotaInstallId = created;
+    return created;
+  }catch(e){
+    _quotaInstallId = 'install-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+    return _quotaInstallId;
+  }
+}
+
+async function getServerQuotaIdentity(){
+  const installId = getQuotaInstallId();
+  try{
+    const bridgeActive = await hasNativeBridge();
+    if(bridgeActive && window.NativePurchase && typeof window.NativePurchase.getStoryEntitlement === 'function'){
+      const entitlement = await window.NativePurchase.getStoryEntitlement();
+      return {
+        planId: entitlement && entitlement.planId ? entitlement.planId : 'free',
+        purchaseToken: entitlement && entitlement.purchaseToken ? entitlement.purchaseToken : '',
+        installId
+      };
+    }
+  }catch(e){
+    console.warn('Could not resolve native story entitlement:', e);
+  }
+  return { planId:'free', purchaseToken:'', installId };
+}
+
 // FIX (2026-09-05): checking "is there a real Google Play Billing bridge"
 // means actually calling getDigitalGoodsService() and awaiting its result.
 // The old code re-ran this same await from scratch inside purchasePlan(),
@@ -1002,6 +1038,10 @@ async function generateIllustration(page){
   // the free Canvas composite further down, so the app never breaks.
   if(currentPlan !== 'free' && ILLUSTRATION_API.endpoint && childPhotoDataUrl){
     try{
+      const quotaIdentity = await getServerQuotaIdentity();
+      if(quotaIdentity.planId === 'free' || !quotaIdentity.purchaseToken){
+        return generateIllustrationCanvas(page);
+      }
       const res = await fetch(ILLUSTRATION_API.endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1009,7 +1049,9 @@ async function generateIllustration(page){
           childPhotoDataUrl,
           pageText: page.text || '',
           motif: page.motif || 'star',
-          scene: page.scene || ''
+          scene: page.scene || '',
+          planId: quotaIdentity.planId,
+          purchaseToken: quotaIdentity.purchaseToken
         })
       });
       if(res.ok){
@@ -1345,12 +1387,32 @@ The tone should be safe and age-appropriate, ending with ${name} feeling confide
     let data;
     if(STORY_API.endpoint){
       // Production path: your own backend holds the real Anthropic key.
+      const quotaIdentity = await getServerQuotaIdentity();
       const response = await fetch(STORY_API.endpoint, {
         method:"POST", headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify({ system: systemPrompt, prompt: userPrompt, maxTokens })
+        body: JSON.stringify({
+          name,
+          age: Number(age),
+          color,
+          worldLabel,
+          themeLabel,
+          pageCount,
+          readingLevel,
+          promptLang: t.promptLang,
+          planId: quotaIdentity.planId,
+          purchaseToken: quotaIdentity.purchaseToken,
+          installId: quotaIdentity.installId
+        })
       });
       data = await response.json();
-      if(!response.ok) throw new Error(data.error || ('Backend error '+response.status));
+      if(!response.ok){
+        if(data && data.quota){
+          currentPlan = data.quota.plan || currentPlan;
+          storiesUsedInPeriod = Number(data.quota.used || 0);
+          updateQuotaUI();
+        }
+        throw new Error(data.error || ('Backend error '+response.status));
+      }
     } else {
       // Preview-only fallback: this direct call only works inside Claude's own
       // artifact preview, which auto-authenticates it. It will fail with a 401
@@ -1410,7 +1472,12 @@ The tone should be safe and age-appropriate, ending with ${name} feeling confide
     }
     currentStoryId = storyId;
 
-    storiesUsedInPeriod++;
+    if(data && data.quota){
+      currentPlan = data.quota.plan || currentPlan;
+      storiesUsedInPeriod = Number(data.quota.used || 0);
+    } else {
+      storiesUsedInPeriod++;
+    }
     updateQuotaUI();
 
     clearInterval(loadingInterval);
@@ -1771,7 +1838,7 @@ let ttsAudioEl = null;
 let usingCloudAudio = false;
 let ttsRequestToken = 0; // guards against a slow/late fetch response landing after the user already turned the page or stopped
 
-function speakCurrentPage(){
+async function speakCurrentPage(){
   const page = storyPages[currentPage];
   if(!page || page.divider || page.photoPage){ autoReadMode = false; updateListenBtnLabel(); return; }
   const t = I18N[currentLang];
@@ -1783,10 +1850,26 @@ function speakCurrentPage(){
 
   if(!TTS_API.endpoint){ speakCurrentPageWithBrowserTts(myToken); return; }
 
+  if(currentPlan === 'free'){
+    speakCurrentPageWithBrowserTts(myToken);
+    return;
+  }
+
+  const quotaIdentity = await getServerQuotaIdentity();
+  if(quotaIdentity.planId === 'free' || !quotaIdentity.purchaseToken){
+    speakCurrentPageWithBrowserTts(myToken);
+    return;
+  }
+
   fetch(TTS_API.endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text: page.text, ttsTag: t.ttsTag })
+    body: JSON.stringify({
+      text: page.text,
+      ttsTag: t.ttsTag,
+      planId: quotaIdentity.planId,
+      purchaseToken: quotaIdentity.purchaseToken
+    })
   })
     .then(r => r.ok ? r.json() : Promise.reject(new Error('tts endpoint not available')))
     .then(data => {

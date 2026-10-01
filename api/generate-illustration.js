@@ -1,3 +1,5 @@
+import { verifyPaidPlan } from './story-quota.js';
+
 // Vercel serverless function: /api/generate-illustration
 // PAID-TIER ONLY (enforced client-side in index.html: free plan never calls
 // this — it uses the zero-cost Canvas composite instead). Holds the real
@@ -44,14 +46,40 @@ const MOTIF_SCENE_HINTS = {
 };
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  const origin = String(req.headers.origin || '');
+  const configuredOrigins = String(process.env.STARDUST_ALLOWED_ORIGINS || '')
+    .split(',').map(v => v.trim()).filter(Boolean);
+  const allowedOrigins = new Set(['https://stardust-tales-ai.vercel.app', ...configuredOrigins]);
+  if (origin && allowedOrigins.has(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+  }
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') { res.status(200).end(); return; }
+  if (req.method === 'OPTIONS') { res.status(!origin || allowedOrigins.has(origin) ? 204 : 403).end(); return; }
+  if (origin && !allowedOrigins.has(origin)) { res.status(403).json({ error: 'Origin not allowed.' }); return; }
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
 
-  const { childPhotoDataUrl, pageText, motif, scene } = req.body || {};
-  if (!childPhotoDataUrl) { res.status(400).json({ error: 'Missing childPhotoDataUrl' }); return; }
+  const rawLength = Number(req.headers['content-length'] || 0);
+  if (rawLength > 8 * 1024 * 1024) { res.status(413).json({ error: 'Request body too large.' }); return; }
+
+  const { childPhotoDataUrl, pageText, motif, scene, planId, purchaseToken } = req.body || {};
+  const photoData = String(childPhotoDataUrl || '');
+  const supportedPhoto = /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/=\r\n]+$/.test(photoData);
+  if (!supportedPhoto) {
+    res.status(400).json({ error: 'Photo must be a base64 JPEG, PNG or WebP data URL.' });
+    return;
+  }
+  if (photoData.length > 7_500_000) {
+    res.status(413).json({ error: 'Photo is too large.' });
+    return;
+  }
+
+  const entitled = await verifyPaidPlan(planId, purchaseToken).catch(() => false);
+  if (!entitled) {
+    res.status(403).json({ error: 'Paid illustration entitlement could not be verified.' });
+    return;
+  }
 
   if (!process.env.FAL_KEY) {
     res.status(500).json({ error: 'Server is missing FAL_KEY - set it in your Vercel project settings.' });
@@ -70,10 +98,11 @@ export default async function handler(req, res) {
   // systemPrompt's "scene" field). Use that as the primary descriptor and
   // only fall back to the generic motif hint for older/malformed requests
   // that don't include one.
-  const sceneHint = MOTIF_SCENE_HINTS[motif] || 'a warm, magical storybook scene';
-  const specificScene = (scene || '').trim().slice(0, 200);
+  const safeMotif = Object.prototype.hasOwnProperty.call(MOTIF_SCENE_HINTS, motif) ? motif : 'star';
+  const sceneHint = MOTIF_SCENE_HINTS[safeMotif];
+  const specificScene = String(scene || '').trim().slice(0, 200);
   const effectiveScene = specificScene || sceneHint;
-  const storyBit = (pageText || '').slice(0, 400);
+  const storyBit = String(pageText || '').trim().slice(0, 400);
   // FIX (2026-09-05): the previous prompt + default params produced an
   // edited close-up of the reference photo instead of a real storybook
   // scene, because FLUX.1 Kontext is an image-EDIT model that stays close
@@ -126,15 +155,21 @@ export default async function handler(req, res) {
 
     const data = await falRes.json();
     if (!falRes.ok) {
-      res.status(falRes.status).json({ error: data.error || data.detail || 'fal.ai API error', details: data });
+      console.error('fal.ai illustration request failed with status', falRes.status);
+      res.status(502).json({ error: 'Illustration provider request failed.' });
       return;
     }
 
     const imageUrl = data.images && data.images[0] && data.images[0].url;
-    if (!imageUrl) { res.status(502).json({ error: 'fal.ai response had no image URL', details: data }); return; }
+    if (!imageUrl) {
+      console.error('fal.ai illustration response did not contain an image URL.');
+      res.status(502).json({ error: 'Illustration provider returned no image.' });
+      return;
+    }
 
     res.status(200).json({ imageUrl });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error('Illustration generation failed:', e);
+    res.status(500).json({ error: 'Illustration generation failed.' });
   }
 }
