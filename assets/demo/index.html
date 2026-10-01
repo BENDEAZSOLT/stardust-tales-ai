@@ -358,7 +358,24 @@ const MOTIFS = {
    real per-story pipeline now aims for this same page-to-scene accuracy.
    generateDemoIllustration()/DEMO_PAGES_META below are kept only as an
    offline fallback (drawn entirely client-side) in case a static asset
-   ever fails to load. */
+   ever fails to load.
+
+   UPDATE (2026-10-01): expanded the demo from 6 to 12 pages — the
+   maximum story length the app offers (MAX_PAGE_COUNT) — and rewrote it
+   as a bigger, escalating adventure (hidden door, blackout, secret
+   study, twist ending) so the free sample is as exciting and
+   subscribe-worthy as possible. Pages 1-6 keep the original real
+   fal.ai-generated photos (page1.jpg..page6.jpg / header.jpg). Pages
+   7-12 have no static photo yet (would need another real fal.ai run
+   with a child's photo, which costs money and needs a real photo), so
+   they intentionally fall through to generateDemoIllustration() above —
+   a free, zero-cost, client-side canvas illustration using the new
+   DEMO_PAGES_META entries added for pages 7-12, matching each new
+   page's scene (locked door, legend scroll, flashlight blackout,
+   telescope study, star map, the cat reveal, celebration). When real
+   photos for pages 7-12 are generated later, just extend
+   DEMO_PAGE_IMAGES to 12 entries and these will be used instead
+   automatically — no other code change needed. */
 const DEMO_CHILD_EMOJI = '🧒';
 const DEMO_PAGE_IMAGES = [
   'assets/demo/page1.jpg','assets/demo/page2.jpg','assets/demo/page3.jpg',
@@ -371,64 +388,112 @@ const DEMO_PAGES_META = [
   {emoji:'🔍', c1:'#e9e4d8', c2:'#d8cfb8'},
   {emoji:'🖼️', c1:'#f3e3ff', c2:'#e3c9fb'},
   {emoji:'🗝️', c1:'#fff8e0', c2:'#ffe9a8'},
-  {emoji:'🏅', c1:'#ffe3e0', c2:'#ffc9c3'}
+  {emoji:'🚪', c1:'#e4e4e4', c2:'#cfcfcf'},
+  {emoji:'📜', c1:'#f2e6d0', c2:'#e3d0a3'},
+  {emoji:'🔦', c1:'#cfd6f5', c2:'#aab4e8'},
+  {emoji:'🔭', c1:'#e0e0ff', c2:'#c7c7ff'},
+  {emoji:'🗺️', c1:'#efe0ff', c2:'#dcc4ff'},
+  {emoji:'🐱', c1:'#ffe3e0', c2:'#ffc9c3'},
+  {emoji:'🎉', c1:'#fff4d0', c2:'#ffe49a'}
 ];
 const DEMO_STORY_TEXT = {
-  en: { title: "Benji and the Museum Mystery", pages: [
-    "Benji loved mysteries more than anything. One sunny morning, his class visited the Grand City Museum, and he could barely sit still on the bus.",
-    "Inside the dinosaur hall, Benji noticed something odd: the huge dinosaur's name tag was missing, and there were tiny muddy footprints leading away from it.",
-    "He borrowed a magnifying glass from the museum guide and knelt down to study the footprints closely. They led straight toward a dusty old hallway.",
-    "Benji followed the footprints past rows of old paintings, his heart beating fast. Behind one crooked painting, he spotted a tiny golden key.",
-    "The key fit perfectly into a small wooden cabinet Benji had never noticed before. Inside was the dinosaur's missing name tag — and a note!",
-    "The note explained that the museum's cat had knocked the tag down chasing a moth. Everyone laughed with relief, and the museum director gave Benji a special junior detective badge."
+  en: { title: "Benji and the Secret of the Midnight Museum", pages: [
+    "Benji loved mysteries more than anything in the world. One golden autumn morning, his class visited the Grand City Museum, and he could barely sit still on the bus — today, he just knew, something extraordinary was going to happen.",
+    "Inside the great dinosaur hall, Benji noticed something strange: the towering dinosaur's name plaque was gone, and a trail of tiny muddy footprints wound away across the marble floor.",
+    "He borrowed a magnifying glass from the museum guide and knelt down to study the prints. They were far too small for a person — and they led straight toward a narrow door marked STAFF ONLY, propped open just a crack.",
+    "Benji slipped through the gap into a dim, dusty hallway lined with crooked old paintings. His heart thumped with every step, but his detective instincts told him he was close to something important.",
+    "Behind the most crooked painting of all — a portrait of a stern-looking man in a starry cloak — Benji spotted a tiny glint of gold. He reached out and pulled free a small, ornate key.",
+    "The key was far too elegant for any cabinet nearby. Instead, it seemed to match a tall, iron-banded door at the end of the hallway, engraved with the words: FOUNDER'S STUDY — KEEP OUT.",
+    "Just then, the museum's elderly caretaker appeared, leaning on her cane. \"That door hasn't opened in fifty years,\" she whispered with a twinkle in her eye. \"Legend says our founder hid a star-shaped medallion inside — but the museum closes in one hour, so you'd better hurry, young detective.\"",
+    "Benji's hands trembled with excitement as he slid the key into the lock — and at that exact moment, every light in the museum flickered and went dark. Somewhere nearby, something let out a low, ghostly meow. Gripping his phone for light, Benji pushed the heavy door open anyway.",
+    "Inside was an astronomer's secret study, frozen in time: dusty star charts covered every wall, and a huge brass telescope pointed toward a painted ceiling full of constellations. In the flashlight beam, one star on the map glowed faintly brighter than the rest.",
+    "Benji pressed the glowing star — and with a soft click, a hidden drawer slid open beneath the telescope. Inside lay an old leather diary, the dinosaur's missing name plaque… and a dazzling medallion shaped like a shooting star.",
+    "Just then, a fluffy orange cat leapt out from behind the telescope and landed right on the diary, purring loudly. \"There you are, Whiskers!\" laughed the caretaker from the doorway. \"This mischievous old cat has been chasing moths and nudging things around the museum for years — and tonight, she finally helped a young detective find the truth.\"",
+    "The lights flicked back on, and the whole museum staff gathered to see what Benji had found. The director pinned a shining Junior Detective badge to his jacket and announced a brand-new trail of mysteries for curious explorers just like him. As Benji's class rode home, he already knew: this was only the beginning of his adventures."
   ]},
-  hu: { title: "Benji és a múzeumi rejtély", pages: [
-    "Benji mindennél jobban szerette a rejtélyeket. Egy napsütéses reggelen az osztálya a Nagyvárosi Múzeumba látogatott, és alig bírt megülni a buszon.",
-    "A dinoszauruszteremben Benji valami furcsát vett észre: az óriási dinoszaurusz névtáblája hiányzott, és apró, sáros lábnyomok vezettek el mellőle.",
-    "Kölcsönkért egy nagyítót az idegenvezetőtől, és letérdelt, hogy alaposan megvizsgálja a lábnyomokat. Azok egyenesen egy poros, régi folyosóra vezettek.",
-    "Benji követte a nyomokat a régi festmények sora mellett, gyorsan dobogó szívvel. Az egyik ferdén lógó festmény mögött apró, arany kulcsot pillantott meg.",
-    "A kulcs pontosan illett egy kis fa szekrénykébe, amit Benji eddig sosem vett észre. Belül ott volt a dinoszaurusz hiányzó névtáblája — és egy üzenet!",
-    "Az üzenetből kiderült, hogy a múzeum macskája verte le a táblát, miközben egy molylepkét kergetett. Mindenki megkönnyebbülve nevetett, a múzeumigazgató pedig egy különleges kis nyomozó jelvényt adott Benjinek."
+  hu: { title: "Benji és az Éjféli Múzeum Titka", pages: [
+    "Benji mindennél jobban szerette a rejtélyeket. Egy aranyló őszi reggelen az osztálya a Nagyvárosi Múzeumba látogatott, és alig bírt megülni a buszon — valahogy érezte, hogy ma valami egészen különleges fog történni.",
+    "A nagy dinoszauruszteremben Benji furcsa dolgot vett észre: az óriási dinoszaurusz névtáblája eltűnt, és apró, sáros lábnyomok vezettek el a márványpadlón.",
+    "Kölcsönkért egy nagyítót az idegenvezetőtől, és letérdelt, hogy megvizsgálja a nyomokat. Túl kicsik voltak egy emberhez — és egyenesen egy keskeny, CSAK SZEMÉLYZETNEK feliratú ajtóhoz vezettek, amely résnyire nyitva állt.",
+    "Benji átbújt a résen egy homályos, poros folyosóra, amelyet ferdén lógó, régi festmények szegélyeztek. A szíve minden lépésnél hevesebben dobogott, de nyomozói ösztöne azt súgta: közel jár valami fontoshoz.",
+    "A legferdébb festmény mögött — egy szigorú tekintetű, csillagos köpenyes férfi portréja mögött — Benji apró, arany csillanást pillantott meg. Kihúzott egy kicsi, díszes kulcsot.",
+    "A kulcs sokkal díszesebb volt, mint bármelyik közeli szekrényke zárja. Inkább egy magas, vasalt ajtóhoz illett a folyosó végén, amelyre ez volt vésve: ALAPÍTÓ DOLGOZÓSZOBÁJA — BELÉPNI TILOS.",
+    "Ekkor megjelent a múzeum idős gondnoknője, botjára támaszkodva. „Ez az ajtó ötven éve nem nyílt ki” — suttogta csillogó szemmel. „A legenda szerint az alapító egy csillag alakú medált rejtett el odabent — de a múzeum egy óra múlva zár, úgyhogy siess, ifjú nyomozó.”",
+    "Benji keze remegett az izgalomtól, ahogy a kulcsot a zárba csúsztatta — és pontosan ekkor minden fény kialudt a múzeumban. Valahol a közelben halk, kísérteties nyávogás hallatszott. Benji a telefonja fényénél, de bátran benyomta a súlyos ajtót.",
+    "Odabent egy időben megállt, titkos csillagászati dolgozószoba tárult fel: poros csillagtérképek borították a falakat, egy hatalmas réz teleszkóp pedig egy csillagképekkel festett mennyezet felé mutatott. A zseblámpa fényében az egyik csillag a térképen halványan fényesebben ragyogott, mint a többi.",
+    "Benji megnyomta a ragyogó csillagot — és halk kattanással egy rejtett fiók csúszott ki a teleszkóp alól. Benne egy régi bőrnaplót, a dinoszaurusz hiányzó névtábláját… és egy csodálatos, hullócsillag alakú medált talált.",
+    "Ekkor egy bolyhos, vörös macska ugrott elő a teleszkóp mögül, és pontosan a naplóra huppant, hangosan dorombolva. „Hát itt vagy, Bajusz!” — nevetett fel a gondnoknő az ajtóból. „Ez a csintalan öreg macska évek óta molylepkéket kerget és dolgokat borogat fel a múzeumban — ma este pedig végre segített egy ifjú nyomozónak megtalálni az igazságot.”",
+    "A fények újra felgyulladtak, és az egész múzeumi személyzet összegyűlt, hogy megnézze, mit talált Benji. Az igazgató egy csillogó Ifjú Nyomozó jelvényt tűzött a kabátjára, és bejelentette egy vadonatúj rejtélyút indítását minden kíváncsi felfedező számára. Ahogy Benji osztálya hazafelé buszozott, ő már tudta: ez csak a kalandjai kezdete volt."
   ]},
-  es: { title: "Benji y el misterio del museo", pages: [
-    "A Benji le encantaban los misterios más que nada. Una mañana soleada, su clase visitó el Gran Museo de la Ciudad, y apenas podía quedarse quieto en el autobús.",
-    "Dentro de la sala de dinosaurios, Benji notó algo raro: faltaba la placa con el nombre del enorme dinosaurio, y había pequeñas huellas de barro que se alejaban de allí.",
-    "Pidió prestada una lupa a la guía del museo y se arrodilló para estudiar las huellas de cerca. Llevaban directo a un antiguo pasillo polvoriento.",
-    "Benji siguió las huellas pasando filas de cuadros antiguos, con el corazón latiendo rápido. Detrás de un cuadro torcido, vio una pequeña llave dorada.",
-    "La llave encajaba perfectamente en un pequeño armario de madera que Benji nunca había notado. ¡Dentro estaba la placa perdida del dinosaurio — y una nota!",
-    "La nota explicaba que el gato del museo había tirado la placa persiguiendo una polilla. Todos rieron aliviados, y el director del museo le dio a Benji una insignia especial de detective junior."
+  es: { title: "Benji y el Secreto del Museo de Medianoche", pages: [
+    "A Benji le encantaban los misterios más que nada en el mundo. Una dorada mañana de otoño, su clase visitó el Gran Museo de la Ciudad, y apenas podía quedarse quieto en el autobús — hoy, lo sabía, iba a pasar algo extraordinario.",
+    "Dentro de la gran sala de dinosaurios, Benji notó algo extraño: la placa con el nombre del enorme dinosaurio había desaparecido, y un rastro de pequeñas huellas de barro serpenteaba por el suelo de mármol.",
+    "Pidió prestada una lupa a la guía del museo y se arrodilló para examinar las huellas. Eran demasiado pequeñas para una persona — y llevaban directo a una puerta estrecha marcada SOLO PERSONAL, entreabierta apenas una rendija.",
+    "Benji se deslizó por la abertura hacia un pasillo oscuro y polvoriento, bordeado de viejos cuadros torcidos. Su corazón latía con fuerza a cada paso, pero su instinto de detective le decía que estaba cerca de algo importante.",
+    "Detrás del cuadro más torcido de todos — el retrato de un hombre de mirada severa con una capa de estrellas — Benji vio un diminuto destello dorado. Sacó una pequeña llave decorada.",
+    "La llave era demasiado elegante para cualquier armario cercano. Parecía encajar con una alta puerta reforzada con hierro al final del pasillo, grabada con las palabras: ESTUDIO DEL FUNDADOR — PROHIBIDO ENTRAR.",
+    "Justo entonces apareció la anciana conserje del museo, apoyada en su bastón. «Esa puerta no se ha abierto en cincuenta años» — susurró con un brillo en los ojos. «Dice la leyenda que nuestro fundador escondió dentro un medallón con forma de estrella — pero el museo cierra en una hora, así que date prisa, joven detective.»",
+    "Las manos de Benji temblaban de emoción mientras deslizaba la llave en la cerradura — y justo en ese momento, todas las luces del museo parpadearon y se apagaron. Cerca de allí, algo soltó un maullido bajo y fantasmal. Con el teléfono como linterna, Benji empujó la pesada puerta de todos modos.",
+    "Dentro había un estudio de astrónomo congelado en el tiempo: mapas estelares polvorientos cubrían las paredes, y un enorme telescopio de bronce apuntaba hacia un techo pintado lleno de constelaciones. Bajo la luz de la linterna, una estrella del mapa brillaba un poco más que las demás.",
+    "Benji presionó la estrella brillante — y con un suave clic, un cajón oculto se deslizó bajo el telescopio. Dentro había un viejo diario de cuero, la placa perdida del dinosaurio… y un deslumbrante medallón con forma de estrella fugaz.",
+    "Justo entonces, un gato peludo y anaranjado saltó detrás del telescopio y aterrizó justo sobre el diario, ronroneando fuerte. «¡Ahí estás, Bigotes!» — rió la conserje desde la puerta. «Este travieso gato viejo lleva años persiguiendo polillas y tirando cosas por el museo — y esta noche, por fin ayudó a un joven detective a encontrar la verdad.»",
+    "Las luces volvieron a encenderse, y todo el personal del museo se reunió para ver lo que Benji había encontrado. El director le prendió una reluciente insignia de Detective Junior en la chaqueta y anunció un nuevo sendero de misterios para exploradores curiosos como él. Mientras la clase de Benji volvía a casa en autobús, él ya lo sabía: esto solo era el comienzo de sus aventuras."
   ]},
-  de: { title: "Benji und das Museumsrätsel", pages: [
-    "Benji liebte Rätsel mehr als alles andere. An einem sonnigen Morgen besuchte seine Klasse das Große Stadtmuseum, und er konnte im Bus kaum stillsitzen.",
-    "Im Dinosauriersaal bemerkte Benji etwas Merkwürdiges: Das Namensschild des riesigen Dinosauriers fehlte, und kleine schlammige Fußspuren führten davon weg.",
-    "Er lieh sich eine Lupe von der Museumsführerin und kniete sich hin, um die Spuren genau zu untersuchen. Sie führten direkt zu einem verstaubten alten Flur.",
-    "Benji folgte den Spuren an alten Gemälden vorbei, sein Herz klopfte schnell. Hinter einem schiefen Gemälde entdeckte er einen winzigen goldenen Schlüssel.",
-    "Der Schlüssel passte genau in einen kleinen Holzschrank, den Benji noch nie bemerkt hatte. Darin lag das fehlende Namensschild des Dinosauriers — und ein Zettel!",
-    "Auf dem Zettel stand, dass die Katze des Museums das Schild beim Jagen einer Motte heruntergestoßen hatte. Alle lachten erleichtert, und der Museumsdirektor überreichte Benji eine besondere Junior-Detektiv-Marke."
+  de: { title: "Benji und das Geheimnis des Mitternachtsmuseums", pages: [
+    "Benji liebte Rätsel mehr als alles andere auf der Welt. An einem goldenen Herbstmorgen besuchte seine Klasse das Große Stadtmuseum, und er konnte im Bus kaum stillsitzen — heute, das spürte er, würde etwas Außergewöhnliches passieren.",
+    "Im großen Dinosauriersaal bemerkte Benji etwas Seltsames: Das Namensschild des riesigen Dinosauriers war verschwunden, und eine Spur winziger schlammiger Fußabdrücke schlängelte sich über den Marmorboden.",
+    "Er lieh sich eine Lupe von der Museumsführerin und kniete sich hin, um die Spuren zu untersuchen. Sie waren viel zu klein für einen Menschen — und führten direkt zu einer schmalen Tür mit der Aufschrift NUR PERSONAL, die einen Spalt offenstand.",
+    "Benji schlüpfte durch den Spalt in einen dämmrigen, staubigen Flur, gesäumt von alten, schiefen Gemälden. Sein Herz klopfte bei jedem Schritt heftiger, doch sein Detektivinstinkt sagte ihm, dass er etwas Wichtigem nahe war.",
+    "Hinter dem schiefsten Gemälde von allen — dem Porträt eines streng blickenden Mannes in einem sternenbesetzten Umhang — entdeckte Benji ein winziges goldenes Glitzern. Er zog einen kleinen, kunstvoll verzierten Schlüssel hervor.",
+    "Der Schlüssel war viel zu edel für irgendeinen Schrank in der Nähe. Stattdessen schien er zu einer hohen, eisenbeschlagenen Tür am Ende des Flurs zu passen, in die die Worte eingraviert waren: ARBEITSZIMMER DES GRÜNDERS — ZUTRITT VERBOTEN.",
+    "Genau da erschien die alte Hausmeisterin des Museums, gestützt auf ihren Stock. „Diese Tür wurde seit fünfzig Jahren nicht geöffnet“, flüsterte sie mit einem Funkeln in den Augen. „Der Legende nach versteckte unser Gründer dort ein sternförmiges Medaillon — aber das Museum schließt in einer Stunde, also beeil dich, junger Detektiv.“",
+    "Benjis Hände zitterten vor Aufregung, als er den Schlüssel ins Schloss steckte — und genau in diesem Moment flackerten alle Lichter im Museum und erloschen. Irgendwo in der Nähe erklang ein leises, gespenstisches Miauen. Mit dem Handy als Taschenlampe stieß Benji trotzdem die schwere Tür auf.",
+    "Drinnen lag ein in der Zeit eingefrorenes Arbeitszimmer eines Astronomen: staubige Sternkarten bedeckten die Wände, und ein riesiges Messingteleskop zeigte auf eine bemalte Decke voller Sternbilder. Im Licht der Taschenlampe leuchtete ein Stern auf der Karte etwas heller als die anderen.",
+    "Benji drückte auf den leuchtenden Stern — und mit einem leisen Klicken glitt eine verborgene Schublade unter dem Teleskop hervor. Darin lagen ein altes Ledertagebuch, das fehlende Namensschild des Dinosauriers… und ein funkelndes, sternschnuppenförmiges Medaillon.",
+    "Genau da sprang eine flauschige, orangefarbene Katze hinter dem Teleskop hervor und landete genau auf dem Tagebuch, laut schnurrend. „Da bist du ja, Schnurrbart!“, lachte die Hausmeisterin von der Tür aus. „Diese schelmische alte Katze jagt seit Jahren Motten und stößt Dinge im Museum um — und heute Abend hat sie endlich einem jungen Detektiv geholfen, die Wahrheit zu finden.“",
+    "Die Lichter gingen wieder an, und das gesamte Museumspersonal versammelte sich, um zu sehen, was Benji gefunden hatte. Der Direktor steckte ihm eine glänzende Junior-Detektiv-Plakette an die Jacke und kündigte einen brandneuen Rätselpfad für neugierige Entdecker wie ihn an. Als Benjis Klasse mit dem Bus nach Hause fuhr, wusste er schon: Dies war erst der Anfang seiner Abenteuer."
   ]},
-  fr: { title: "Benji et le mystère du musée", pages: [
-    "Benji adorait les mystères plus que tout. Un matin ensoleillé, sa classe a visité le Grand Musée de la Ville, et il avait du mal à tenir en place dans le bus.",
-    "Dans la salle des dinosaures, Benji a remarqué quelque chose d'étrange : l'étiquette du nom de l'énorme dinosaure avait disparu, et de petites traces de pas boueuses s'en éloignaient.",
-    "Il a emprunté une loupe à la guide du musée et s'est agenouillé pour examiner les traces de près. Elles menaient tout droit vers un vieux couloir poussiéreux.",
-    "Benji a suivi les traces le long de vieux tableaux, le cœur battant vite. Derrière un tableau de travers, il a repéré une minuscule clé dorée.",
-    "La clé s'emboîtait parfaitement dans une petite armoire en bois que Benji n'avait jamais remarquée. À l'intérieur se trouvait l'étiquette manquante du dinosaure — et un mot !",
-    "Le mot expliquait que le chat du musée avait fait tomber l'étiquette en poursuivant un papillon de nuit. Tout le monde a ri, soulagé, et le directeur du musée a remis à Benji un badge spécial de détective junior."
+  fr: { title: "Benji et le Secret du Musée de Minuit", pages: [
+    "Benji adorait les mystères plus que tout au monde. Un matin doré d'automne, sa classe a visité le Grand Musée de la Ville, et il avait du mal à tenir en place dans le bus — aujourd'hui, il le sentait, quelque chose d'extraordinaire allait se produire.",
+    "Dans la grande salle des dinosaures, Benji a remarqué quelque chose d'étrange : l'étiquette du nom de l'énorme dinosaure avait disparu, et une traînée de minuscules traces de pas boueuses serpentait sur le sol en marbre.",
+    "Il a emprunté une loupe à la guide du musée et s'est agenouillé pour examiner les traces. Elles étaient bien trop petites pour une personne — et menaient tout droit à une porte étroite marquée PERSONNEL UNIQUEMENT, entrouverte d'une fente.",
+    "Benji s'est glissé par l'ouverture dans un couloir sombre et poussiéreux, bordé de vieux tableaux de travers. Son cœur battait plus fort à chaque pas, mais son instinct de détective lui disait qu'il approchait de quelque chose d'important.",
+    "Derrière le tableau le plus de travers de tous — le portrait d'un homme au regard sévère vêtu d'une cape étoilée — Benji a aperçu un minuscule éclat doré. Il a dégagé une petite clé richement ouvragée.",
+    "La clé était bien trop élégante pour n'importe quelle armoire alentour. Elle semblait plutôt correspondre à une haute porte cerclée de fer au bout du couloir, gravée des mots : BUREAU DU FONDATEUR — ENTRÉE INTERDITE.",
+    "C'est alors qu'apparut la vieille gardienne du musée, appuyée sur sa canne. « Cette porte ne s'est pas ouverte depuis cinquante ans », chuchota-t-elle, une lueur dans les yeux. « La légende raconte que notre fondateur y a caché un médaillon en forme d'étoile — mais le musée ferme dans une heure, alors dépêche-toi, jeune détective. »",
+    "Les mains de Benji tremblaient d'excitation tandis qu'il glissait la clé dans la serrure — et à cet instant précis, toutes les lumières du musée ont vacillé puis se sont éteintes. Quelque part tout près, un miaulement grave et fantomatique s'est fait entendre. Avec son téléphone en guise de lampe, Benji a quand même poussé la lourde porte.",
+    "À l'intérieur se trouvait un bureau d'astronome figé dans le temps : de vieilles cartes stellaires poussiéreuses couvraient les murs, et un immense télescope de cuivre pointait vers un plafond peint de constellations. Dans le faisceau de la lampe, une étoile de la carte brillait un peu plus que les autres.",
+    "Benji a appuyé sur l'étoile brillante — et avec un léger clic, un tiroir caché a glissé hors du télescope. À l'intérieur se trouvaient un vieux journal en cuir, l'étiquette manquante du dinosaure… et un éblouissant médaillon en forme d'étoile filante.",
+    "C'est alors qu'un chat roux tout ébouriffé a bondi de derrière le télescope et a atterri droit sur le journal, ronronnant bruyamment. « Te voilà, Moustache ! », a ri la gardienne depuis la porte. « Ce vieux chat espiègle chasse les papillons de nuit et renverse des objets dans le musée depuis des années — et ce soir, elle a enfin aidé un jeune détective à découvrir la vérité. »",
+    "Les lumières se sont rallumées, et tout le personnel du musée s'est rassemblé pour voir ce que Benji avait trouvé. Le directeur a épinglé un badge brillant de Détective Junior sur sa veste et a annoncé un tout nouveau parcours de mystères pour les jeunes explorateurs curieux comme lui. Alors que la classe de Benji rentrait en bus, il le savait déjà : ce n'était que le début de ses aventures."
   ]},
-  it: { title: "Benji e il mistero del museo", pages: [
-    "A Benji piacevano i misteri più di ogni altra cosa. Una mattina di sole, la sua classe visitò il Grande Museo della Città, e lui riusciva a malapena a stare fermo sull'autobus.",
-    "Nella sala dei dinosauri, Benji notò qualcosa di strano: mancava il cartellino con il nome dell'enorme dinosauro, e c'erano piccole impronte fangose che si allontanavano da lì.",
-    "Prese in prestito una lente d'ingrandimento dalla guida del museo e si inginocchiò per esaminare da vicino le impronte. Portavano dritte verso un vecchio corridoio polveroso.",
-    "Benji seguì le impronte oltre file di antichi dipinti, con il cuore che batteva forte. Dietro un quadro storto, notò una piccola chiave dorata.",
-    "La chiave si adattava perfettamente a un piccolo armadietto di legno che Benji non aveva mai notato. Dentro c'era il cartellino mancante del dinosauro — e un biglietto!",
-    "Il biglietto spiegava che il gatto del museo aveva fatto cadere il cartellino inseguendo una falena. Tutti risero sollevati, e il direttore del museo diede a Benji un distintivo speciale da giovane detective."
+  it: { title: "Benji e il Segreto del Museo di Mezzanotte", pages: [
+    "A Benji piacevano i misteri più di ogni altra cosa al mondo. In una dorata mattina d'autunno, la sua classe visitò il Grande Museo della Città, e lui riusciva a malapena a stare fermo sull'autobus — oggi, lo sentiva, sarebbe successo qualcosa di straordinario.",
+    "Nella grande sala dei dinosauri, Benji notò qualcosa di strano: il cartellino con il nome dell'enorme dinosauro era sparito, e una scia di minuscole impronte fangose serpeggiava sul pavimento di marmo.",
+    "Prese in prestito una lente d'ingrandimento dalla guida del museo e si inginocchiò per esaminare le impronte. Erano troppo piccole per una persona — e portavano dritte a una porta stretta con la scritta SOLO PERSONALE, socchiusa appena.",
+    "Benji si infilò nella fessura in un corridoio buio e polveroso, fiancheggiato da vecchi quadri storti. Il cuore gli batteva più forte a ogni passo, ma il suo istinto da detective gli diceva che era vicino a qualcosa di importante.",
+    "Dietro il quadro più storto di tutti — il ritratto di un uomo dallo sguardo severo avvolto in un mantello stellato — Benji scorse un minuscolo bagliore dorato. Tirò fuori una piccola chiave finemente decorata.",
+    "La chiave era troppo elegante per qualsiasi armadietto nei dintorni. Sembrava invece adattarsi a un'alta porta rinforzata di ferro in fondo al corridoio, incisa con le parole: STUDIO DEL FONDATORE — VIETATO L'INGRESSO.",
+    "Proprio in quel momento apparve l'anziana custode del museo, appoggiata al bastone. «Quella porta non si apre da cinquant'anni» sussurrò con un luccichio negli occhi. «La leggenda narra che il nostro fondatore vi nascose un medaglione a forma di stella — ma il museo chiude tra un'ora, quindi sbrigati, giovane detective.»",
+    "Le mani di Benji tremavano per l'emozione mentre infilava la chiave nella serratura — e proprio in quell'istante tutte le luci del museo sfarfallarono e si spensero. Da qualche parte vicino si udì un miagolio basso e spettrale. Con il telefono come torcia, Benji spinse comunque la pesante porta.",
+    "All'interno c'era lo studio di un astronomo fermo nel tempo: polverose mappe stellari coprivano le pareti, e un enorme telescopio di ottone puntava verso un soffitto dipinto pieno di costellazioni. Nel fascio della torcia, una stella sulla mappa brillava leggermente più delle altre.",
+    "Benji premette la stella luminosa — e con un leggero scatto, un cassetto nascosto scivolò fuori da sotto il telescopio. Dentro c'erano un vecchio diario di pelle, il cartellino perduto del dinosauro… e un abbagliante medaglione a forma di stella cadente.",
+    "Proprio in quel momento, un gatto arancione tutto soffice saltò fuori da dietro il telescopio e atterrò proprio sul diario, facendo le fusa rumorosamente. «Eccoti qui, Baffo!» rise la custode dalla porta. «Questo vecchio gatto birichino insegue falene e rovescia oggetti nel museo da anni — e stasera ha finalmente aiutato un giovane detective a scoprire la verità.»",
+    "Le luci si riaccesero, e tutto il personale del museo si radunò per vedere cosa avesse trovato Benji. Il direttore gli appuntò sulla giacca un lucente distintivo da Giovane Detective e annunciò un nuovissimo percorso di misteri per esploratori curiosi come lui. Mentre la classe di Benji tornava a casa in autobus, lui lo sapeva già: era solo l'inizio delle sue avventure."
   ]},
-  pt: { title: "Benji e o mistério do museu", pages: [
-    "O Benji adorava mistérios mais do que tudo. Numa manhã de sol, a sua turma visitou o Grande Museu da Cidade, e ele mal conseguia ficar quieto no autocarro.",
-    "Na sala dos dinossauros, o Benji notou algo estranho: faltava a etiqueta com o nome do enorme dinossauro, e havia pequenas pegadas de lama que se afastavam dali.",
-    "Pediu emprestada uma lupa ao guia do museu e ajoelhou-se para examinar as pegadas de perto. Levavam direto a um velho corredor empoeirado.",
-    "O Benji seguiu as pegadas ao longo de fileiras de quadros antigos, com o coração a bater rápido. Atrás de um quadro torto, avistou uma pequena chave dourada.",
-    "A chave encaixava perfeitamente num pequeno armário de madeira que o Benji nunca tinha reparado. Lá dentro estava a etiqueta perdida do dinossauro — e um bilhete!",
-    "O bilhete explicava que o gato do museu tinha derrubado a etiqueta a perseguir uma traça. Todos riram aliviados, e o diretor do museu deu ao Benji um distintivo especial de detetive júnior."
+  pt: { title: "Benji e o Segredo do Museu da Meia-Noite", pages: [
+    "O Benji adorava mistérios mais do que tudo no mundo. Numa dourada manhã de outono, a sua turma visitou o Grande Museu da Cidade, e ele mal conseguia ficar quieto no autocarro — hoje, ele sentia, algo extraordinário ia acontecer.",
+    "Na grande sala dos dinossauros, o Benji notou algo estranho: a etiqueta com o nome do enorme dinossauro tinha desaparecido, e um rasto de pequenas pegadas de lama serpenteava pelo chão de mármore.",
+    "Pediu emprestada uma lupa ao guia do museu e ajoelhou-se para examinar as pegadas. Eram demasiado pequenas para uma pessoa — e levavam direto a uma porta estreita com a inscrição SÓ FUNCIONÁRIOS, entreaberta apenas uma fresta.",
+    "O Benji esgueirou-se pela abertura para um corredor escuro e empoeirado, ladeado por velhos quadros tortos. O coração batia-lhe mais forte a cada passo, mas o seu instinto de detetive dizia-lhe que estava perto de algo importante.",
+    "Atrás do quadro mais torto de todos — o retrato de um homem de olhar severo envolto numa capa estrelada — o Benji avistou um pequeno brilho dourado. Puxou uma pequena chave ricamente decorada.",
+    "A chave era demasiado elegante para qualquer armário por perto. Em vez disso, parecia encaixar numa alta porta reforçada a ferro no final do corredor, gravada com as palavras: GABINETE DO FUNDADOR — ENTRADA PROIBIDA.",
+    "Nesse instante apareceu a idosa zeladora do museu, apoiada na sua bengala. «Essa porta não abre há cinquenta anos» — sussurrou com um brilho nos olhos. «Reza a lenda que o nosso fundador escondeu lá dentro um medalhão em forma de estrela — mas o museu fecha daqui a uma hora, por isso despacha-te, jovem detetive.»",
+    "As mãos do Benji tremiam de empolgação enquanto deslizava a chave na fechadura — e nesse exato momento, todas as luzes do museu tremeluziram e apagaram-se. Algures perto, ouviu-se um miado baixo e fantasmagórico. Com o telemóvel como lanterna, o Benji empurrou mesmo assim a pesada porta.",
+    "Lá dentro havia um gabinete de astrónomo parado no tempo: mapas estelares empoeirados cobriam as paredes, e um enorme telescópio de latão apontava para um teto pintado cheio de constelações. Sob a luz da lanterna, uma estrela no mapa brilhava um pouco mais do que as outras.",
+    "O Benji pressionou a estrela brilhante — e com um suave clique, uma gaveta escondida deslizou de debaixo do telescópio. Lá dentro estavam um velho diário de couro, a etiqueta perdida do dinossauro… e um deslumbrante medalhão em forma de estrela cadente.",
+    "Nesse instante, um gato laranja todo fofo saltou de trás do telescópio e aterrou mesmo em cima do diário, ronronando alto. «Aí estás tu, Bigodes!» — riu a zeladora, à porta. «Este gato velho e travesso anda há anos a perseguir traças e a derrubar coisas pelo museu — e esta noite, finalmente ajudou um jovem detetive a descobrir a verdade.»",
+    "As luzes voltaram a acender-se, e toda a equipa do museu se reuniu para ver o que o Benji tinha encontrado. O diretor prendeu-lhe um brilhante distintivo de Detetive Júnior no casaco e anunciou um novíssimo percurso de mistérios para exploradores curiosos como ele. Enquanto a turma do Benji regressava de autocarro, ele já sabia: isto era só o início das suas aventuras."
   ]}
 };
 
