@@ -1,0 +1,26 @@
+name: Quota Smoke
+
+on:
+  pull_request:
+  push:
+    branches:
+      - feat/server-side-story-quota
+
+permissions:
+  contents: read
+
+jobs:
+  quota-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check JavaScript syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in api/generate-story.js api/story-quota.js purchase-bridge.js scripts/quota-smoke.mjs; do
+            node --input-type=module --check < "$file"
+          done
+      - name: Run quota invariants
+        run: node scripts/quota-smoke.mjs

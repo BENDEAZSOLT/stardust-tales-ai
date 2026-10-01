@@ -146,6 +146,23 @@ window.NativePurchase = {
     return result.ok;
   },
 
+
+  async getStoryEntitlement() {
+    const service = await getDigitalGoodsService();
+    if (!service) return { planId: "free", purchaseToken: "" };
+    try {
+      const purchases = await service.listPurchases();
+      const monthly = purchases.find(p => p.itemId === PLAN_SKUS.monthly && p.purchaseToken);
+      if (monthly) return { planId: "monthly", purchaseToken: monthly.purchaseToken };
+      const weekly = purchases.find(p => p.itemId === PLAN_SKUS.weekly && p.purchaseToken);
+      if (weekly) return { planId: "weekly", purchaseToken: weekly.purchaseToken };
+      return { planId: "free", purchaseToken: "" };
+    } catch (e) {
+      console.error("Could not resolve story entitlement:", e);
+      return { planId: "free", purchaseToken: "" };
+    }
+  },
+
   // Call on app startup to restore the user's actual active plan instead
   // of defaulting to 'free' every launch.
   async getActivePlan() {
