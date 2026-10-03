@@ -1,0 +1,17 @@
+{
+  "appId": "com.stardusttales.app",
+  "appName": "Stardust Tales",
+  "webDir": "www",
+  "server": {
+    "url": "https://stardust-tales-ai.vercel.app",
+    "iosScheme": "https",
+    "androidScheme": "https",
+    "allowNavigation": [
+      "stardust-tales-ai.vercel.app",
+      "*.stardust-tales-ai.vercel.app"
+    ]
+  },
+  "ios": {
+    "contentInset": "automatic"
+  }
+}

@@ -1,0 +1,83 @@
+name: iOS Wrapper Simulator Build
+
+# Validates that the Capacitor iOS wrapper in ios-wrapper/ builds for the
+# iOS Simulator. No code signing is performed and none is required for a
+# simulator build. This does NOT produce an App Store artifact — signing
+# and upload are a separate, later phase.
+
+on:
+  push:
+    branches:
+      - feat/ios-capacitor-wrapper
+    paths:
+      - 'ios-wrapper/**'
+      - '.github/workflows/ios-wrapper-build.yml'
+  pull_request:
+    paths:
+      - 'ios-wrapper/**'
+      - '.github/workflows/ios-wrapper-build.yml'
+  workflow_dispatch: {}
+
+jobs:
+  simulator-build:
+    name: Build for iOS Simulator (unsigned)
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: ios-wrapper
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install npm dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Capacitor sync (ios)
+        run: npx cap sync ios
+
+      - name: Install CocoaPods dependencies (if a Podfile is present)
+        run: |
+          if [ -f ios/App/Podfile ]; then
+            cd ios/App
+            gem list cocoapods -i >/dev/null 2>&1 || gem install cocoapods --no-document
+            pod install --repo-update
+          else
+            echo "No Podfile found — this Capacitor project uses Swift Package Manager for the native runtime, so CocoaPods is not needed."
+          fi
+
+      - name: Resolve Swift Package dependencies
+        run: |
+          xcodebuild -resolvePackageDependencies \
+            -project ios/App/App.xcodeproj \
+            -scheme App
+
+      - name: Select build target (workspace if CocoaPods generated one, otherwise the xcodeproj)
+        id: target
+        run: |
+          if [ -f ios/App/App.xcworkspace/contents.xcworkspacedata ]; then
+            echo "flag=-workspace" >> "$GITHUB_OUTPUT"
+            echo "path=ios/App/App.xcworkspace" >> "$GITHUB_OUTPUT"
+          else
+            echo "flag=-project" >> "$GITHUB_OUTPUT"
+            echo "path=ios/App/App.xcodeproj" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: List available iOS Simulators (diagnostic)
+        run: xcrun simctl list devicetypes | grep -i iphone || true
+
+      - name: Build for iOS Simulator (no code signing)
+        run: |
+          xcodebuild \
+            ${{ steps.target.outputs.flag }} "${{ steps.target.outputs.path }}" \
+            -scheme App \
+            -sdk iphonesimulator \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            build
