@@ -1,0 +1,17 @@
+{
+  "name": "stardust-tales-ios-wrapper",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Capacitor native iOS wrapper shell for the Stardust Tales PWA (loads the live production site remotely; no app logic duplicated here).",
+  "scripts": {
+    "sync": "cap sync ios",
+    "open:ios": "cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/ios": "^8.5.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.2"
+  }
+}
