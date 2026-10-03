@@ -18,6 +18,9 @@ on:
       - '.github/workflows/ios-wrapper-build.yml'
   workflow_dispatch: {}
 
+permissions:
+  contents: write
+
 jobs:
   simulator-build:
     name: Build for iOS Simulator (unsigned)
@@ -34,27 +37,43 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Versions (diagnostic)
+        run: |
+          node --version
+          npm --version
+          xcodebuild -version
+          xcrun --show-sdk-version --sdk iphonesimulator || true
+
       - name: Install npm dependencies
-        run: npm install --no-audit --no-fund
+        run: |
+          set -o pipefail
+          npm install --no-audit --no-fund 2>&1 | tee /tmp/build.log
 
       - name: Capacitor sync (ios)
-        run: npx cap sync ios
+        run: |
+          set -o pipefail
+          set -x
+          npx cap sync ios 2>&1 | tee -a /tmp/build.log
 
       - name: Install CocoaPods dependencies (if a Podfile is present)
         run: |
-          if [ -f ios/App/Podfile ]; then
-            cd ios/App
-            gem list cocoapods -i >/dev/null 2>&1 || gem install cocoapods --no-document
-            pod install --repo-update
-          else
-            echo "No Podfile found — this Capacitor project uses Swift Package Manager for the native runtime, so CocoaPods is not needed."
-          fi
+          set -o pipefail
+          {
+            if [ -f ios/App/Podfile ]; then
+              cd ios/App
+              gem list cocoapods -i >/dev/null 2>&1 || gem install cocoapods --no-document
+              pod install --repo-update
+            else
+              echo "No Podfile found — this Capacitor project uses Swift Package Manager for the native runtime, so CocoaPods is not needed."
+            fi
+          } 2>&1 | tee -a /tmp/build.log
 
       - name: Resolve Swift Package dependencies
         run: |
+          set -o pipefail
           xcodebuild -resolvePackageDependencies \
             -project ios/App/App.xcodeproj \
-            -scheme App
+            -scheme App 2>&1 | tee -a /tmp/build.log
 
       - name: Select build target (workspace if CocoaPods generated one, otherwise the xcodeproj)
         id: target
@@ -72,6 +91,7 @@ jobs:
 
       - name: Build for iOS Simulator (no code signing)
         run: |
+          set -o pipefail
           xcodebuild \
             ${{ steps.target.outputs.flag }} "${{ steps.target.outputs.path }}" \
             -scheme App \
@@ -80,4 +100,21 @@ jobs:
             -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
-            build
+            build 2>&1 | tee -a /tmp/build.log
+
+      - name: Post failure diagnostics as a commit comment
+        if: failure()
+        run: |
+          LOG_TAIL=$(tail -c 55000 /tmp/build.log 2>/dev/null || echo "no log captured")
+          BODY=$(python3 - "$LOG_TAIL" <<'PYEOF'
+          import json, sys
+          text = sys.argv[1]
+          body = "### iOS wrapper CI failure diagnostics (auto-posted)\n\n```\n" + text + "\n```"
+          print(json.dumps({"body": body}))
+          PYEOF
+          )
+          curl -sS -X POST \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/commits/${{ github.sha }}/comments" \
+            -d "$BODY"
