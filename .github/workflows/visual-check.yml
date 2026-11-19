@@ -8,6 +8,10 @@ on:
         type: boolean
         default: false
   deployment_status:
+  pull_request:
+    paths:
+      - "tools/visual-check/**"
+      - ".github/workflows/visual-check.yml"
   schedule:
     - cron: "17 5 * * *"
 
