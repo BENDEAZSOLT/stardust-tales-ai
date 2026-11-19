@@ -1,0 +1,66 @@
+name: Visual Check
+
+on:
+  workflow_dispatch:
+    inputs:
+      update_baseline:
+        description: "Baseline frissítése (szándékos dizájnváltozás után)"
+        type: boolean
+        default: false
+  deployment_status:
+  schedule:
+    - cron: "17 5 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: visual-check
+  cancel-in-progress: true
+
+jobs:
+  check:
+    if: >-
+      github.event_name != 'deployment_status' ||
+      (github.event.deployment_status.state == 'success' && github.event.deployment_status.environment == 'Production')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      BASE_URL: ${{ github.event.deployment_status.environment_url || vars.VISUAL_CHECK_URL || 'https://stardust-tales-ai.vercel.app' }}
+      PAGES: ${{ vars.VISUAL_CHECK_PAGES || '/ /privacy.html /terms.html' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Függőségek
+        run: |
+          pip install playwright==1.49.1 numpy pillow
+          python -m playwright install --with-deps chromium
+      - name: Ellenőrzés
+        id: run
+        run: |
+          ARGS=""
+          if [ "${{ inputs.update_baseline }}" = "true" ]; then ARGS="--update-baseline"; fi
+          python tools/visual-check/visual_check.py --base-url "$BASE_URL" --pages $PAGES \
+            --baseline-dir tools/visual-check/baseline --out-dir visual-report $ARGS
+      - name: Baseline mentése
+        if: >-
+          always() && steps.run.outcome != 'cancelled' &&
+          (github.event_name == 'workflow_dispatch' || github.event_name == 'schedule') &&
+          (inputs.update_baseline == true || hashFiles('tools/visual-check/baseline/*.png') == '')
+        run: |
+          git config user.name "visual-check-bot"
+          git config user.email "visual-check-bot@users.noreply.github.com"
+          git add tools/visual-check/baseline
+          git diff --cached --quiet || git commit -m "chore: visual baseline frissítése"
+          git push
+      - name: Jelentés
+        if: always()
+        run: cat visual-report/report.md >> "$GITHUB_STEP_SUMMARY" || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: visual-report
+          path: visual-report
+          retention-days: 14
